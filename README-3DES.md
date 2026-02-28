@@ -37,3 +37,24 @@ The pipeline supports multiple dataset "shapes" without removing any existing lo
 
 ## Future Work (RSA/PIN)
 RSA CRT recovery and PIN-block extraction will be integrated later as a second sub-pipeline. This requires datasets that include appropriate per-trace metadata (e.g., APDU/ACR streams and/or dataset-internal labels for supervised training).
+
+## Related Open-Source Repos / Prior Art (Ideas Implemented)
+
+This project is intended to be self-contained and runnable without depending on external SCA frameworks at runtime. However, several parts of the implementation follow well-established patterns from the SCA community and are inspired by (or conceptually aligned with) these open-source projects:
+
+- ChipWhisperer (NewAE) — capture/analyzer ecosystem and common trace-processing patterns.
+  - Repo: https://github.com/newaetech/chipwhisperer
+  - Also useful: https://github.com/newaetech/chipwhisperer-examples
+
+- SCAAML (Google) — ML-assisted SCA workflow concepts: dataset hygiene, training/evaluation discipline, and reproducible pipelines.
+  - Repo: https://github.com/google/scaaml
+
+- SCAred (eShard) — classic SCA methodology references (CPA/DPA/ANOVA-style thinking, trace/metadata abstractions).
+  - Repo (mirror): https://github.com/eshard/scared
+
+- AISY Framework (TU Delft AISyLab) — deep-learning-based SCA framework concepts (metrics, DL-for-SCA pipeline structure).
+  - Repo: https://github.com/AISyLab/AISY_Framework
+
+Future work (RSA/PIN stage; not required for the 3DES-only repo scope):
+- rsatool — RSA/RSA-CRT parameter derivation utility (used conceptually for RSA component reconstruction workflows).
+  - Repo: https://github.com/ius/rsatool
