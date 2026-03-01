@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local run artifacts
+3des-pipeline/Processed/
+3des-pipeline/Optimization/
+3des-pipeline/Output/
+
+# Trained models and large artifacts
+3des-pipeline/models/*
+!3des-pipeline/models/.gitkeep
+
+# Pipeline source caches
+pipeline-code/src/**/__pycache__/
