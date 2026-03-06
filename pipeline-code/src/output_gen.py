@@ -9,14 +9,18 @@ logger = logging.getLogger(__name__)
 
 # Client-required report template (column headers only).
 # Mirrors the first sheet headers in `KALKi TEST CARD.xlsx`.
+# Extended with Bayesian confidence scores for 3DES key recovery.
 KALKI_TEMPLATE_COLS = [
     "PROFILE",
     "TRACK2",
     "AIP",
     "IAD",
     "3DES_KENC",
+    "3DES_KENC_confidence",
     "3DES_KMAC",
+    "3DES_KMAC_confidence",
     "3DES_KDEK",
+    "3DES_KDEK_confidence",
     "PIN",
     "RSA_CRT_P",
     "RSA_CRT_Q",
@@ -36,6 +40,17 @@ def _normalize_hex(s: Any) -> str:
     if s.startswith("B'") and s.endswith("'"):
         s = s[2:-1]
     return s
+
+
+def _format_confidence(conf: Any) -> str:
+    """Format confidence score (0.0-1.0) as a 2-decimal string."""
+    if conf is None:
+        return ""
+    try:
+        c = float(conf)
+        return f"{c:.2f}"
+    except (ValueError, TypeError):
+        return ""
 
 
 def _value_for_row(v: Any, idx: int) -> str:
@@ -128,12 +143,17 @@ class OutputGenerator:
                 for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
                     v = _value_for_row(predicted_3des.get(col), idx)
                     out[col] = _format_3des_48_hex(v) if v else ""
+                    # Include confidence scores if available (from Bayesian recovery)
+                    conf_key = f"{col}_confidence"
+                    conf_val = _value_for_row(predicted_3des.get(conf_key), idx)
+                    out[conf_key] = _format_confidence(conf_val)
             elif final_3des_key:
                 # Legacy compatibility: treat final_3des_key as 16-byte and repeat as 2-key TDEA.
                 v = _normalize_hex(final_3des_key)
                 out["3DES_KENC"] = _format_3des_48_hex(v)
                 out["3DES_KMAC"] = _format_3des_48_hex(v)
                 out["3DES_KDEK"] = _format_3des_48_hex(v)
+                # No confidence available for legacy path
 
             # PIN: only if explicitly provided by ML stage; no hardcoded defaults.
             if pin:

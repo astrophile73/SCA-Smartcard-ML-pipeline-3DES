@@ -45,15 +45,18 @@ def train_3des(
     models_per_sbox: int,
     epochs: int,
     early_stop_patience: int,
+    use_transfer_learning: bool = False,
 ) -> None:
     os.makedirs(model_root, exist_ok=True)
     logger.info("Training 3DES ensemble into %s", model_root)
+    logger.info("Transfer learning mode: %s", "ENABLED" if use_transfer_learning else "DISABLED")
     train_ensemble(
         input_dir=processed_dir,
         output_dir=model_root,
         models_per_sbox=models_per_sbox,
         epochs=epochs,
         early_stop_patience=early_stop_patience,
+        use_transfer_learning=use_transfer_learning,
     )
 
 
@@ -88,6 +91,7 @@ def attack_3des(
     model_root: str,
     card_type: str = "universal",
     target_key: str = "session",
+    return_confidence: bool = False,
 ) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
     if target_key == "master":
         from src.inference_masterkey import run_master_key_attack
@@ -134,5 +138,15 @@ def attack_3des(
         return None, final_3des_key
 
     model_dir = _resolve_3des_model_root(model_root)
-    predicted = recover_3des_keys(processed_dir, model_dir, card_type=card_type)
+    if return_confidence:
+        from src.inference_3des import run_blind_attack
+        logger.info("Running 3DES attack with Bayesian confidence scoring...")
+        predicted = run_blind_attack(
+            processed_dir,
+            model_dir,
+            card_type=card_type,
+            return_confidence=True,
+        )
+    else:
+        predicted = recover_3des_keys(processed_dir, model_dir, card_type=card_type)
     return predicted, None

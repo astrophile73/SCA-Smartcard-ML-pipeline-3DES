@@ -121,6 +121,8 @@ def main():
     parser.add_argument("--enable_external_labels", action="store_true", help="Enable external 3DES key labels (e.g., Visa) from XLSX mapping")
     parser.add_argument("--label_map_xlsx", default="", help="Path to XLSX containing PROFILE/TRACK2 and 3DES key columns")
     parser.add_argument("--strict_label_mode", action="store_true", help="Fail preprocessing/training if any 3DES training row has unresolved keys")
+    parser.add_argument("--use_transfer_learning", action="store_true", help="Enable transfer learning for multi-key-type training (KENC->KMAC/KDEK)")
+    parser.add_argument("--return_confidence", action="store_true", help="Include Bayesian confidence scores in attack results")
     
     args = parser.parse_args()
 
@@ -218,6 +220,7 @@ def main():
                 args.models_per_sbox,
                 args.epochs,
                 args.early_stop_patience,
+                use_transfer_learning=args.use_transfer_learning,
             )
         elif want_3des and not have_3des:
             logger.warning("Skipping 3DES training: no 3DES traces detected.")
@@ -244,6 +247,7 @@ def main():
                 model_root,
                 card_type=args.card_type,
                 target_key=args.target_key,
+                return_confidence=args.return_confidence,
             )
             if predicted_3des:
                 logger.info("Recovered 3DES keys (pure ML): %s", list(predicted_3des.keys()))
