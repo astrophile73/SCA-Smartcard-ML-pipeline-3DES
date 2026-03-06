@@ -101,35 +101,6 @@ def train_single_model(
 def train_ensemble(input_dir, output_dir, models_per_sbox=5, epochs=30, early_stop_patience=8):
     os.makedirs(output_dir, exist_ok=True)
     
-    # Load stage-specific features (stage 1 is required; stage 2 optional but needed for full 16-byte recovery).
-    x_s1_path = os.path.join(input_dir, "X_features_s1.npy")
-    if not os.path.exists(x_s1_path):
-        # Backward compat
-        x_s1_path = os.path.join(input_dir, "X_features.npy")
-    x_s2_path = os.path.join(input_dir, "X_features_s2.npy")
-
-    logger.info(f"Loading Stage 1 features from {x_s1_path}")
-    X_s1 = np.load(x_s1_path).astype(np.float32)
-    X_s2 = np.load(x_s2_path).astype(np.float32) if os.path.exists(x_s2_path) else None
-
-    # Persist normalization stats so inference can match training.
-    mean_s1 = np.mean(X_s1, axis=0)
-    std_s1 = np.std(X_s1, axis=0)
-    std_s1[std_s1 == 0] = 1
-    X_s1 = (X_s1 - mean_s1) / std_s1
-    np.save(os.path.join(output_dir, "mean_s1.npy"), mean_s1)
-    np.save(os.path.join(output_dir, "std_s1.npy"), std_s1)
-
-    if X_s2 is not None:
-        mean_s2 = np.mean(X_s2, axis=0)
-        std_s2 = np.std(X_s2, axis=0)
-        std_s2[std_s2 == 0] = 1
-        X_s2 = (X_s2 - mean_s2) / std_s2
-        np.save(os.path.join(output_dir, "mean_s2.npy"), mean_s2)
-        np.save(os.path.join(output_dir, "std_s2.npy"), std_s2)
-    else:
-        logger.warning("Stage 2 features missing; stage-2 training will be skipped.")
-
     # Optional grouping to reduce memorization across captures.
     groups_full = None
     meta_path = os.path.join(input_dir, "Y_meta.csv")
@@ -143,7 +114,51 @@ def train_ensemble(input_dir, output_dir, models_per_sbox=5, epochs=30, early_st
         except Exception as e:
             logger.warning(f"Could not load grouping metadata: {e}")
 
+    # Loop over key types and stages, loading per-key-type features for each
     for key_type in ["kenc", "kmac", "kdek"]:
+        # Load per-key-type stage-specific features
+        x_s1_path = os.path.join(input_dir, f"X_features_{key_type}_s1.npy")
+        if not os.path.exists(x_s1_path):
+            # Backward compat: try legacy KENC filenames if per-key-type not found
+            x_s1_path = os.path.join(input_dir, "X_features_s1.npy")
+            if not os.path.exists(x_s1_path):
+                x_s1_path = os.path.join(input_dir, "X_features.npy")
+        
+        x_s2_path = os.path.join(input_dir, f"X_features_{key_type}_s2.npy")
+        if not os.path.exists(x_s2_path):
+            # Backward compat: Try legacy s2 path if per-key-type not found
+            x_s2_path = os.path.join(input_dir, "X_features_s2.npy")
+        
+        if not os.path.exists(x_s1_path):
+            logger.warning(f"No features found for {key_type.upper()} stage 1; skipping this key type.")
+            continue
+        
+        logger.info(f"Loading Stage 1 features for {key_type.upper()} from {x_s1_path}")
+        X_s1 = np.load(x_s1_path).astype(np.float32)
+        X_s2 = np.load(x_s2_path).astype(np.float32) if os.path.exists(x_s2_path) else None
+
+        # Persist per-key-type normalization stats so inference can match training.
+        mean_s1 = np.mean(X_s1, axis=0)
+        std_s1 = np.std(X_s1, axis=0)
+        std_s1[std_s1 == 0] = 1
+        X_s1 = (X_s1 - mean_s1) / std_s1
+        
+        # Save normalization stats under key-type-specific subdirectory
+        kt_norm_dir = os.path.join(output_dir, "3des", key_type)
+        os.makedirs(kt_norm_dir, exist_ok=True)
+        np.save(os.path.join(kt_norm_dir, "mean_s1.npy"), mean_s1)
+        np.save(os.path.join(kt_norm_dir, "std_s1.npy"), std_s1)
+
+        if X_s2 is not None:
+            mean_s2 = np.mean(X_s2, axis=0)
+            std_s2 = np.std(X_s2, axis=0)
+            std_s2[std_s2 == 0] = 1
+            X_s2 = (X_s2 - mean_s2) / std_s2
+            np.save(os.path.join(kt_norm_dir, "mean_s2.npy"), mean_s2)
+            np.save(os.path.join(kt_norm_dir, "std_s2.npy"), std_s2)
+        else:
+            logger.warning(f"Stage 2 features missing for {key_type.upper()}; stage-2 training will be skipped.")
+
         for stage in (1, 2):
             X_curr_global = X_s1 if stage == 1 else X_s2
             X_curr = X_curr_global

@@ -4,6 +4,41 @@ from src.utils import setup_logger
 
 logger = setup_logger("preprocess")
 
+def _align_trace_sad(trace, ref_trace, search_window=500):
+    """
+    Align single trace using Sum-of-Absolute-Differences (SAD).
+    More robust than correlation for noisy power traces.
+    Uses ChipWhisperer ResyncSAD pattern if available, else fallback to local correlation.
+    """
+    try:
+        from chipwhisperer.common.utils.align.resync_sad import ResyncSAD
+        
+        # ChipWhisperer SAD-based alignment
+        sad_engine = ResyncSAD(ref_trace)
+        aligned = sad_engine.align(trace)
+        return aligned
+    except ImportError:
+        # Fallback: use localized correlation-based alignment
+        center = len(ref_trace) // 2
+        if len(ref_trace) < search_window * 2:
+            return trace
+        
+        ref_seg = ref_trace[center - search_window : center + search_window]
+        trace_seg = trace[center - search_window : center + search_window]
+        
+        ref_seg = (ref_seg - np.mean(ref_seg)) / (np.std(ref_seg) + 1e-10)
+        trace_seg = (trace_seg - np.mean(trace_seg)) / (np.std(trace_seg) + 1e-10)
+        
+        corr = correlate(trace_seg, ref_seg, mode='same')
+        shift = np.argmax(corr) - (len(corr) // 2)
+        
+        if shift == 0:
+            return trace
+        elif shift > 0:
+            return np.pad(trace[shift:], (0, shift), mode='constant')
+        else:
+            return np.pad(trace[:shift], (abs(shift), 0), mode='constant')
+
 def normalize_traces(traces: np.ndarray) -> np.ndarray:
     """
     Normalize traces (Z-score normalization per trace).
@@ -14,9 +49,11 @@ def normalize_traces(traces: np.ndarray) -> np.ndarray:
     std[std == 0] = 1.0
     return (traces - mean) / std
 
-def align_traces(traces: np.ndarray, reference_idx=0, max_shift=100, reference_trace=None) -> np.ndarray:
+def align_traces(traces: np.ndarray, reference_idx=0, max_shift=100, reference_trace=None, use_sad=True) -> np.ndarray:
     """
-    Align traces using cross-correlation using explicit reference or index.
+    Align traces using SAD (ChipWhisperer ResyncSAD) or localized correlation.
+    Supports ChipWhisperer SAD-based alignment with fallback to correlation.
+    Parameters: use_sad=True tries ChipWhisperer SAD first, then falls back to localized correlation.
     """
     if reference_trace is not None:
         ref_trace = reference_trace
@@ -30,6 +67,19 @@ def align_traces(traces: np.ndarray, reference_idx=0, max_shift=100, reference_t
     
     n_samples = traces.shape[1]
     
+    # Try SAD-based alignment if requested (ChipWhisperer pattern)
+    if use_sad:
+        logger.info("Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...")
+        for i in range(len(traces)):
+            if reference_trace is None and i == reference_idx:
+                aligned_traces[i] = traces[i]
+                continue
+            aligned_traces[i] = _align_trace_sad(traces[i], ref_trace)
+            if i % 100 == 0:
+                logger.debug(f"Aligned trace {i} using SAD")
+        return aligned_traces
+    
+    # Fallback: FFT-based cross-correlation for backward compatibility
     logger.info("Aligning traces using FFT-based Cross-Correlation...")
     try:
         from scipy.signal import fftconvolve

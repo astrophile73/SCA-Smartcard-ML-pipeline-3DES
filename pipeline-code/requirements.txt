@@ -7,3 +7,8 @@ scikit-learn
 rich
 tqdm
 openpyxl
+chipwhisperer
+scared
+scaaml
+tensorflow
+git+https://github.com/AISyLab/AISY_Framework.git@main
