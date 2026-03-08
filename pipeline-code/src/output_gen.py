@@ -78,18 +78,15 @@ def _profile_from_track2(track2: str, meta_path: str) -> str:
     return "GreenVisa" if is_green else "Unknown"
 
 
-def _format_3des_48_hex(k16_hex: str) -> str:
+def _format_3des_32_hex(k_hex: str) -> str:
     """
-    Input is expected to be 16-byte (32 hex) 2-key TDEA: K1||K2.
-    Output is 24-byte (48 hex): K1||K2||K1 for tool compatibility.
+    Return 16-byte key material as 32 hex chars (K1||K2).
+    No fixed key assumptions: works for blind inference outputs.
     """
-    k = _normalize_hex(k16_hex)
+    k = _normalize_hex(k_hex)
     if len(k) < 32:
         return ""
-    k = k[:32]
-    k1 = k[:16]
-    k2 = k[16:32]
-    return f"{k1}{k2}{k1}"
+    return k[:32]
 
 
 class OutputGenerator:
@@ -142,17 +139,17 @@ class OutputGenerator:
             if predicted_3des:
                 for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
                     v = _value_for_row(predicted_3des.get(col), idx)
-                    out[col] = _format_3des_48_hex(v) if v else ""
+                    out[col] = _format_3des_32_hex(v) if v else ""
                     # Include confidence scores if available (from Bayesian recovery)
                     conf_key = f"{col}_confidence"
                     conf_val = _value_for_row(predicted_3des.get(conf_key), idx)
                     out[conf_key] = _format_confidence(conf_val)
             elif final_3des_key:
-                # Legacy compatibility: treat final_3des_key as 16-byte and repeat as 2-key TDEA.
+                # Legacy compatibility: emit the first 16-byte key material (32 hex chars).
                 v = _normalize_hex(final_3des_key)
-                out["3DES_KENC"] = _format_3des_48_hex(v)
-                out["3DES_KMAC"] = _format_3des_48_hex(v)
-                out["3DES_KDEK"] = _format_3des_48_hex(v)
+                out["3DES_KENC"] = _format_3des_32_hex(v)
+                out["3DES_KMAC"] = _format_3des_32_hex(v)
+                out["3DES_KDEK"] = _format_3des_32_hex(v)
                 # No confidence available for legacy path
 
             # PIN: only if explicitly provided by ML stage; no hardcoded defaults.

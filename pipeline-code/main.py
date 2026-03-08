@@ -123,8 +123,11 @@ def main():
     parser.add_argument("--strict_label_mode", action="store_true", help="Fail preprocessing/training if any 3DES training row has unresolved keys")
     parser.add_argument("--use_transfer_learning", action="store_true", help="Enable transfer learning for multi-key-type training (KENC->KMAC/KDEK)")
     parser.add_argument("--return_confidence", action="store_true", help="Include Bayesian confidence scores in attack results")
+    parser.add_argument("--key_types", default="kenc,kmac,kdek", help="Comma-separated 3DES key types to train (kenc,kmac,kdek)")
+    parser.add_argument("--n_attack", type=int, default=0, help="Number of traces for attack (0 = use all available)")
     
     args = parser.parse_args()
+    key_types = [k.strip().lower() for k in str(args.key_types).split(",") if k.strip()]
 
     model_root = args.model_dir if args.model_dir else args.model_root
 
@@ -221,6 +224,7 @@ def main():
                 args.epochs,
                 args.early_stop_patience,
                 use_transfer_learning=args.use_transfer_learning,
+                key_types=key_types,
             )
         elif want_3des and not have_3des:
             logger.warning("Skipping 3DES training: no 3DES traces detected.")
@@ -248,6 +252,8 @@ def main():
                 card_type=args.card_type,
                 target_key=args.target_key,
                 return_confidence=args.return_confidence,
+                n_attack=args.n_attack,
+                pure_science=args.pure_science,
             )
             if predicted_3des:
                 logger.info("Recovered 3DES keys (pure ML): %s", list(predicted_3des.keys()))

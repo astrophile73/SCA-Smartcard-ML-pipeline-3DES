@@ -1,0 +1,28 @@
+# Generated pipeline artifacts
+Output/
+Output_kenc/
+Output_kenc_v2/
+Processed/
+Processed_kenc/
+Processed_kenc_v2/
+*.log
+
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/

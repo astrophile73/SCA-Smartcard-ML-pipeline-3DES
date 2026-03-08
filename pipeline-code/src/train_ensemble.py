@@ -145,6 +145,7 @@ def train_ensemble(
     epochs=30, 
     early_stop_patience=8,
     use_transfer_learning=False,
+    key_types=None,
 ):
     """
     Gap #2: Transfer Learning Support
@@ -181,6 +182,7 @@ def train_ensemble(
 
     # Gap #2: Initialize shared backbone if transfer learning enabled
     shared_backbone = None
+    shared_input_dim = None
     if use_transfer_learning:
         logger.info("=" * 80)
         logger.info("TRANSFER LEARNING MODE ENABLED")
@@ -190,11 +192,16 @@ def train_ensemble(
         logger.info("=" * 80)
 
     # Define key type order and phases
-    key_type_phases = [
+    key_type_phases_all = [
         ("kenc", "Phase 1: KENC Full Training"),
         ("kmac", "Phase 2: KMAC Transfer Learning"),
         ("kdek", "Phase 3: KDEK Transfer Learning"),
     ]
+    key_types_req = [k.lower() for k in (key_types or ["kenc", "kmac", "kdek"])]
+    key_type_phases = [p for p in key_type_phases_all if p[0] in key_types_req]
+    if not key_type_phases:
+        logger.warning("No valid key types requested; skipping 3DES training.")
+        return
 
     # Loop over key types and stages, loading per-key-type features for each
     for phase_idx, (key_type, phase_name) in enumerate(key_type_phases):
@@ -250,7 +257,8 @@ def train_ensemble(
         if use_transfer_learning:
             # Phase 1 (KENC): Create new shared backbone with full training
             if phase_idx == 0:  # KENC phase
-                shared_backbone = ZaidNetSharedBackbone(input_dim=X_s1.shape[1], num_classes=16)
+                shared_input_dim = int(X_s1.shape[1])
+                shared_backbone = ZaidNetSharedBackbone(input_dim=shared_input_dim, num_classes=16)
                 # Ensure not frozen for Phase 1
                 shared_backbone.unfreeze_backbone()
                 logger.info(f"Created shared backbone (Phase 1: KENC full training, LR=0.001)")
@@ -288,12 +296,28 @@ def train_ensemble(
                 else:
                     x_sbox_path = os.path.join(input_dir, f"X_s2_sbox{sbox_num}.npy")
                 if os.path.exists(x_sbox_path):
-                    X_curr = np.load(x_sbox_path).astype(np.float32)
-                    # Normalize per-sbox features for stable optimization.
-                    mean_local = np.mean(X_curr, axis=0)
-                    std_local = np.std(X_curr, axis=0)
-                    std_local[std_local == 0] = 1
-                    X_curr = (X_curr - mean_local) / std_local
+                    X_candidate = np.load(x_sbox_path).astype(np.float32)
+                    # Keep training/inference compatible:
+                    # inference currently loads stage-global features, so we only use per-sbox
+                    # features when their dimensionality matches the global stage features.
+                    if X_curr_global is not None and X_candidate.shape[1] != X_curr_global.shape[1]:
+                        logger.warning(
+                            "Ignoring per-sbox features for %s Stage %d S-Box %d due to dim mismatch "
+                            "(sbox=%d, global=%d). Using stage-global features.",
+                            key_type.upper(),
+                            stage,
+                            sbox_num,
+                            X_candidate.shape[1],
+                            X_curr_global.shape[1],
+                        )
+                        X_curr = X_curr_global
+                    else:
+                        X_curr = X_candidate
+                        # Normalize per-sbox features for stable optimization.
+                        mean_local = np.mean(X_curr, axis=0)
+                        std_local = np.std(X_curr, axis=0)
+                        std_local[std_local == 0] = 1
+                        X_curr = (X_curr - mean_local) / std_local
                 else:
                     X_curr = X_curr_global
 
@@ -303,6 +327,22 @@ def train_ensemble(
                     continue
 
                 groups = groups_full[valid_idx] if groups_full is not None and len(groups_full) == len(Y) else None
+
+                # Transfer-learning safety:
+                # Shared backbone only supports the feature width it was created with.
+                # Some per-sbox feature files can have a different width than global stage features.
+                use_shared_for_this_run = use_transfer_learning and shared_backbone is not None
+                if use_shared_for_this_run and shared_input_dim is not None and X_final.shape[1] != shared_input_dim:
+                    logger.warning(
+                        "Transfer learning disabled for %s Stage %d S-Box %d due to feature-dim mismatch "
+                        "(got %d, expected %d). Falling back to standard model for this run.",
+                        key_type.upper(),
+                        stage,
+                        sbox_num,
+                        X_final.shape[1],
+                        shared_input_dim,
+                    )
+                    use_shared_for_this_run = False
 
                 logger.info(
                     f"Training 3DES {key_type.upper()} Stage {stage} S-Box {sbox_num} "
@@ -320,8 +360,8 @@ def train_ensemble(
                         groups=groups,
                         early_stop_patience=early_stop_patience,
                         key_type=key_type,
-                        shared_backbone=shared_backbone if use_transfer_learning else None,
-                        freeze_backbone=freeze_flag if use_transfer_learning else False,
+                        shared_backbone=shared_backbone if use_shared_for_this_run else None,
+                        freeze_backbone=freeze_flag if use_shared_for_this_run else False,
                         transfer_lr=0.0001 if (use_transfer_learning and phase_idx > 0) else 0.001,
                     )
         

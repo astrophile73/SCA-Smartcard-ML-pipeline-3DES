@@ -122,20 +122,46 @@ def _load_models_for(model_dir: str, key_type: str, stage: int, sbox_idx_1based:
     return model_paths
 
 
-def _ensemble_avg_probs(X: np.ndarray, model_paths: List[str], device: torch.device) -> np.ndarray:
-    # Build & load models with correct input_dim.
+def _ensemble_avg_probs(
+    X: np.ndarray,
+    model_paths: List[str],
+    device: torch.device,
+    key_type: Optional[str] = None,
+) -> np.ndarray:
+    # Build & load models with checkpoint-inferred canonical input_dim.
     models = []
+    is_shared_list: List[bool] = []
     for p in model_paths:
-        model = get_model(input_dim=X.shape[1], num_classes=16).to(device)
-        model.load_state_dict(torch.load(p, map_location=device))
+        state = torch.load(p, map_location=device)
+        inferred_input_dim = int(X.shape[1])
+        is_shared = any(k.startswith("fc_shared") or k.startswith("fc_kenc") for k in state.keys())
+        if is_shared:
+            fc_w = state.get("fc_shared1.weight")
+        else:
+            fc_w = state.get("fc1.weight")
+        if fc_w is not None and hasattr(fc_w, "shape") and len(fc_w.shape) == 2:
+            inferred_input_dim = int((int(fc_w.shape[1]) // 128) * 16)
+            if inferred_input_dim <= 0:
+                inferred_input_dim = int(X.shape[1])
+
+        model = get_model(
+            input_dim=inferred_input_dim,
+            num_classes=16,
+            use_shared_backbone=is_shared,
+        ).to(device)
+        model.load_state_dict(state, strict=True)
         model.eval()
         models.append(model)
+        is_shared_list.append(is_shared)
 
     bx = torch.from_numpy(X).float().to(device)
     with torch.no_grad():
         preds = []
-        for m in models:
-            out = m(bx)
+        for m, is_shared in zip(models, is_shared_list):
+            if is_shared:
+                out = m(bx, key_type=(key_type or "kenc"))
+            else:
+                out = m(bx)
             preds.append(F.softmax(out, dim=1).cpu().numpy())
         avg = np.mean(preds, axis=0)
     return np.clip(avg, 1e-15, 1.0)
@@ -183,7 +209,7 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
         return {}
 
     X1 = _normalize(X1, _load_norm(model_dir, stage=1))
-    n = min(n_attack, len(X1))
+    n = len(X1) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1))
 
     challenges = _challenge_ints_from_meta(df.iloc[:n])
     er0_s1 = _expanded_r0(challenges)
@@ -216,7 +242,7 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             if not model_paths:
                 winners_s1 = []
                 break
-            probs = _ensemble_avg_probs(X1[:n], model_paths, device)
+            probs = _ensemble_avg_probs(X1[:n], model_paths, device, key_type=key_type)
             winners_s1.append(_score_subkey(probs, er0_s1, sbox_idx))
 
         if not winners_s1:
@@ -257,7 +283,7 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             if not model_paths2:
                 winners_s2 = []
                 break
-            probs2 = _ensemble_avg_probs(X2n, model_paths2, device)
+            probs2 = _ensemble_avg_probs(X2n, model_paths2, device, key_type=key_type)
             winners_s2.append(_score_subkey(probs2, er0_s2, sbox_idx))
 
         if not winners_s2:
@@ -373,7 +399,7 @@ def recover_3des_keys_with_confidence(
         return {}
 
     X1 = _normalize(X1, _load_norm(model_dir, stage=1))
-    n = min(n_attack, len(X1))
+    n = len(X1) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1))
 
     challenges = _challenge_ints_from_meta(df.iloc[:n])
     er0_s1 = _expanded_r0(challenges)
@@ -408,7 +434,7 @@ def recover_3des_keys_with_confidence(
                 winners_s1 = []
                 break
             
-            probs = _ensemble_avg_probs(X1[:n], model_paths, device)
+            probs = _ensemble_avg_probs(X1[:n], model_paths, device, key_type=key_type)
             # Gap #1: Use Bayesian confidence instead of argmax
             best_key, confidence, candidates = _compute_key_confidence(probs, er0_s1, sbox_idx, top_k=return_top_k)
             winners_s1.append(best_key)
@@ -469,7 +495,7 @@ def recover_3des_keys_with_confidence(
                 winners_s2 = []
                 break
             
-            probs2 = _ensemble_avg_probs(X2n, model_paths2, device)
+            probs2 = _ensemble_avg_probs(X2n, model_paths2, device, key_type=key_type)
             best_key, confidence, candidates = _compute_key_confidence(probs2, er0_s2, sbox_idx, top_k=return_top_k)
             winners_s2.append(best_key)
             sbox_confidences_s2.append(confidence)
@@ -517,7 +543,7 @@ def run_blind_attack(
     processed_dir: str,
     model_dir: str,
     card_type: str = "universal",
-    n_attack: int = 5000,
+    n_attack: int = 0,
     return_confidence: bool = True,
 ) -> Dict[str, Any]:
     """

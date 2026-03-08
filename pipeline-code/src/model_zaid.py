@@ -13,6 +13,7 @@ class ZaidNet(nn.Module):
     """
     def __init__(self, input_dim=1500, num_classes=16):
         super(ZaidNet, self).__init__()
+        self.input_dim = int(input_dim)
         
         # Block 1
         self.conv1 = nn.Conv1d(1, 16, kernel_size=11, stride=1, padding=5)
@@ -37,7 +38,7 @@ class ZaidNet(nn.Module):
         # Flatten
         # Calculate size dynamically based on input_dim
         # 1500 -> 750 -> 375 -> 187 -> 93
-        final_dim = input_dim // 16 
+        final_dim = self.input_dim // 16 
         self._to_linear = 128 * final_dim 
         
         # Fully Connected Layers
@@ -48,10 +49,19 @@ class ZaidNet(nn.Module):
         # Dropout
         self.dropout = nn.Dropout(0.3)
 
+    def _adapt_input_width(self, x):
+        # Flexibility with accuracy retention:
+        # models are trained for a canonical width (self.input_dim). At runtime, if width differs,
+        # linearly resample to canonical width before feature extraction.
+        if x.size(-1) != self.input_dim:
+            x = F.interpolate(x, size=self.input_dim, mode="linear", align_corners=False)
+        return x
+
     def forward(self, x):
         # x shape: (Batch, features)
         if x.ndim == 2:
             x = x.unsqueeze(1)
+        x = self._adapt_input_width(x)
             
         # CNN Blocks
         x = self.pool1(F.relu(self.bn1(self.conv1(x))))
@@ -87,6 +97,7 @@ class ZaidNetSharedBackbone(nn.Module):
     """
     def __init__(self, input_dim=1500, num_classes=16):
         super(ZaidNetSharedBackbone, self).__init__()
+        self.input_dim = int(input_dim)
         
         # SHARED BACKBONE: Conv layers (power-agnostic feature extraction)
         # These layers learn: aligned_power_samples → intermediate_features
@@ -113,7 +124,7 @@ class ZaidNetSharedBackbone(nn.Module):
         self.pool4 = nn.AvgPool1d(kernel_size=2, stride=2)
         
         # Calculate flattened size
-        final_dim = input_dim // 16
+        final_dim = self.input_dim // 16
         self._to_linear = 128 * final_dim
         
         # SHARED FC layers (general feature learning)
@@ -129,10 +140,16 @@ class ZaidNetSharedBackbone(nn.Module):
         
         self.dropout_head = nn.Dropout(0.3)
 
+    def _adapt_input_width(self, x):
+        if x.size(-1) != self.input_dim:
+            x = F.interpolate(x, size=self.input_dim, mode="linear", align_corners=False)
+        return x
+
     def forward_backbone(self, x):
         """Extract shared features from input (used during transfer learning)."""
         if x.ndim == 2:
             x = x.unsqueeze(1)
+        x = self._adapt_input_width(x)
             
         # Shared CNN backbone
         x = self.pool1(F.relu(self.bn1(self.conv1(x))))
