@@ -61,7 +61,7 @@ def extract_features(
     skip_poi_search=False,
     separate_sboxes=False,
     card_type="universal",
-    include_secrets=True,
+    include_secrets=False,
     trace_type="all",
     opt_dir=None,
     external_label_map=None,
