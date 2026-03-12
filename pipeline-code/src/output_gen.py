@@ -16,11 +16,8 @@ KALKI_TEMPLATE_COLS = [
     "AIP",
     "IAD",
     "3DES_KENC",
-    "3DES_KENC_confidence",
     "3DES_KMAC",
-    "3DES_KMAC_confidence",
     "3DES_KDEK",
-    "3DES_KDEK_confidence",
     "PIN",
     "RSA_CRT_P",
     "RSA_CRT_Q",
@@ -140,10 +137,6 @@ class OutputGenerator:
                 for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
                     v = _value_for_row(predicted_3des.get(col), idx)
                     out[col] = _format_3des_32_hex(v) if v else ""
-                    # Include confidence scores if available (from Bayesian recovery)
-                    conf_key = f"{col}_confidence"
-                    conf_val = _value_for_row(predicted_3des.get(conf_key), idx)
-                    out[conf_key] = _format_confidence(conf_val)
             elif final_3des_key:
                 # Legacy compatibility: emit the first 16-byte key material (32 hex chars).
                 v = _normalize_hex(final_3des_key)
