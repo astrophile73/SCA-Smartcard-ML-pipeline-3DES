@@ -543,6 +543,7 @@ def derive_rsa_crt(p_hex, q_hex, e_list=[3, 65537]):
     """
     Derives RSA CRT components from P and Q (rsatool logic).
     Tries multiple public exponents (default 3 and 65537).
+    Returns hex strings WITHOUT zero padding (as computed).
     """
     if not p_hex or not q_hex: return None
     from math import gcd
@@ -571,13 +572,13 @@ def derive_rsa_crt(p_hex, q_hex, e_list=[3, 65537]):
         qinv = pow(q, -1, p)
         
         return {
-            'N': f"{n:0288X}", 
-            'D': f"{d:0288X}",
-            'P': f"{p:0144X}",
-            'Q': f"{q:0144X}",
-            'DP': f"{dp:0144X}",
-            'DQ': f"{dq:0144X}",
-            'QINV': f"{qinv:0128X}",
+            'N': f"{n:X}", 
+            'D': f"{d:X}",
+            'P': f"{p:X}",
+            'Q': f"{q:X}",
+            'DP': f"{dp:X}",
+            'DQ': f"{dq:X}",
+            'QINV': f"{qinv:X}",
             'E': valid_e
         }
     except Exception:
@@ -677,17 +678,8 @@ def verify_rsa_against_modulus(p_hex, q_hex, modulus_hex):
 
 def standardize_rsa_crt(components, target_length=144):
     """
-    Standardizes RSA CRT components to a specific hex length (default 144 chars / 576 bits).
-    Ensures all keys (P, Q, DP, DQ, QINV) are zero-padded to this length.
+    Standardizes RSA CRT components (no longer pads, returns as-is).
+    For backward compatibility, accepts target_length parameter but ignores it.
     """
-    standardized = {}
-    for k, v in components.items():
-        if k in ['P', 'Q', 'DP', 'DQ', 'QINV']:
-            # Pad to target_length
-            standardized[k] = v.zfill(target_length)
-        elif k in ['N', 'D']:
-            # N and D are typically double the prime length (1152 bits -> 288 chars)
-            standardized[k] = v.zfill(target_length * 2)
-        else:
-            standardized[k] = v
-    return standardized
+    # Return components as-is, without padding
+    return {k: v for k, v in components.items()}

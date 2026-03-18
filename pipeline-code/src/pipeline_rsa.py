@@ -97,6 +97,11 @@ def _resolve_rsa_model_root(model_root: str) -> str:
     if os.path.isdir(os.path.join(model_root, "rsa")):
         return model_root
 
+    # Check for Ensemble_RSA subfolder
+    ensemble_rsa_path = os.path.join(model_root, "Ensemble_RSA")
+    if os.path.isdir(ensemble_rsa_path):
+        return ensemble_rsa_path
+
     # Allow passing the ensemble directory directly.
     rsa_files = [
         os.path.join(model_root, "rsa_p_model0.pth"),
@@ -104,11 +109,6 @@ def _resolve_rsa_model_root(model_root: str) -> str:
     ]
     if any(os.path.exists(p) for p in rsa_files):
         return model_root
-
-    fallback = os.path.join("models", "Ensemble_RSA")
-    if os.path.isdir(fallback):
-        logger.info("RSA models not found under %s. Using %s", model_root, fallback)
-        return fallback
 
     return model_root
 

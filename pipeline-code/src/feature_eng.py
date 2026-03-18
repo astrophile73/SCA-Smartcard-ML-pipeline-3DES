@@ -66,6 +66,7 @@ def extract_features(
     opt_dir=None,
     external_label_map=None,
     strict_label_mode=False,
+    force_variance_poi=False,
 ):
     """
     Extract POIs from all traces with robust alignment and Dual-Pass Global POI selection.
@@ -193,11 +194,19 @@ def extract_features(
                     n_valid_sboxes_s2[sb] += n_v2
             
             print(f"Pass 1: {n_samples} traces stats...", end='\r')
+        
+        # DETERMINISTIC POI MODE: Skip correlation when force_variance_poi=True, always use variance-based
+        if force_variance_poi:
+            logger.info("Variance-based POI selection mode (deterministic for training/attack consistency)...")
+            use_correlation = False
+        else:
+            use_correlation = include_secrets  # Use correlation only if secrets available
             
         denom_x_3des = np.sqrt(n_samples * sum_x2_3des - sum_x_3des**2 + 1e-10)
-        for sb in range(8):
-            n_v = n_valid_sboxes[sb]
-            if n_v < 2: continue
+        if use_correlation and not force_variance_poi:
+            for sb in range(8):
+                n_v = n_valid_sboxes[sb]
+                if n_v < 2: continue
             denom_y = np.sqrt(n_v * sum_y2_sboxes[sb] - sum_y_sboxes[sb]**2 + 1e-10)
             numerator = n_v * sum_xy_sboxes[sb] - sum_x_3des * (sum_y_sboxes[sb] / n_v * n_samples) # Approximation for mean_x
             # Actually, mean_x is sum_x / n_samples. So numerator should be n_v * (mean_xy - mean_x * mean_y)
@@ -237,28 +246,39 @@ def extract_features(
                 pois_per_sbox_s2[sb] = np.sort(sel_global2)
                 np.save(os.path.join(opt_dir, f"pois_s2_sbox{sb+1}.npy"), pois_per_sbox_s2[sb])
             
-        # UNION POI SELECTION: Instead of variance, use the top correlation points for all S-Boxes
-        all_sbox_pois = []
-        all_sbox_pois_s2 = []
-        for sb in range(8):
-            if sb in pois_per_sbox and len(pois_per_sbox[sb]) > 0:
-                # Take top 150 from each for 1200 total (well within ZaidNet limits)
-                all_sbox_pois.append(pois_per_sbox[sb][:150])
-            if sb in pois_per_sbox_s2 and len(pois_per_sbox_s2[sb]) > 0:
-                all_sbox_pois_s2.append(pois_per_sbox_s2[sb][:150])
-         
-        if all_sbox_pois:
-            global_pois = np.unique(np.concatenate(all_sbox_pois))
-            logger.info(f"Global POIs (Union of S-Boxes): {len(global_pois)} points selected.")
-        if all_sbox_pois_s2:
-            global_pois_s2 = np.unique(np.concatenate(all_sbox_pois_s2))
-            logger.info(f"Global POIs Stage 2 (Union of S-Boxes): {len(global_pois_s2)} points selected.")
-        else:
-            # Fallback to variance only if correlation failed
+            # UNION POI SELECTION: Instead of variance, use the top correlation points for all S-Boxes
+            all_sbox_pois = []
+            all_sbox_pois_s2 = []
+            for sb in range(8):
+                if sb in pois_per_sbox and len(pois_per_sbox[sb]) > 0:
+                    # Take top 150 from each for 1200 total (well within ZaidNet limits)
+                    all_sbox_pois.append(pois_per_sbox[sb][:150])
+                if sb in pois_per_sbox_s2 and len(pois_per_sbox_s2[sb]) > 0:
+                    all_sbox_pois_s2.append(pois_per_sbox_s2[sb][:150])
+             
+            if all_sbox_pois:
+                global_pois = np.unique(np.concatenate(all_sbox_pois))
+                logger.info(f"Global POIs (Union of S-Boxes): {len(global_pois)} points selected.")
+            if all_sbox_pois_s2:
+                global_pois_s2 = np.unique(np.concatenate(all_sbox_pois_s2))
+                logger.info(f"Global POIs Stage 2 (Union of S-Boxes): {len(global_pois_s2)} points selected.")
+            else:
+                # Fallback to variance if correlation failed - select top 200 by variance
+                variance = (sum_x2_full / n_samples) - (sum_x_full / n_samples)**2
+                # Select top 200 points by variance (no distance constraint)
+                top_indices = np.argsort(variance)[::-1][:200]
+                global_pois = np.sort(top_indices)
+                logger.warning("Correlation POI union failed. Selecting %d top-variance POIs.", len(global_pois))
+                global_pois_s2 = global_pois
+        
+        # ALWAYS USE VARIANCE when force_variance_poi=True or when correlation failed
+        if force_variance_poi or global_pois is None:
             variance = (sum_x2_full / n_samples) - (sum_x_full / n_samples)**2
-            peaks_v, _ = find_peaks(variance, distance=50, height=np.mean(variance))
-            global_pois = peaks_v[np.argsort(variance[peaks_v])[::-1]][:1500]
-            logger.warning("Correlation POI union failed. Falling back to Variance-based POIs.")
+            # Select top 200 points by variance (no distance constraint)
+            top_indices = np.argsort(variance)[::-1][:200]
+            global_pois = np.sort(top_indices)
+            if force_variance_poi:
+                logger.info("Variance-based POI selection: %d points selected for Stage 1", len(global_pois))
             global_pois_s2 = global_pois
              
         global_pois = np.sort(global_pois)
@@ -373,6 +393,7 @@ def perform_feature_extraction(
     enable_external_labels=False,
     label_map_xlsx=None,
     strict_label_mode=False,
+    force_variance_poi=False,
 ):
     # NOTE:
     # Historically this function auto-deleted `output_dir` when `use_existing_pois` was false.
@@ -421,6 +442,7 @@ def perform_feature_extraction(
         opt_dir=opt_dir,
         external_label_map=external_label_map,
         strict_label_mode=strict_label_mode,
+        force_variance_poi=force_variance_poi,
     )
     
     # Generate labels for training (Critical step for Master Key alignment)

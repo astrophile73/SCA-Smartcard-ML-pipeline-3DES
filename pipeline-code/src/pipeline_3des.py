@@ -206,6 +206,7 @@ def preprocess_3des(
     enable_external_labels: bool = False,
     label_map_xlsx: Optional[str] = None,
     strict_label_mode: bool = False,
+    force_variance_poi: bool = False,
 ) -> Tuple[Optional[str], Optional[str]]:
     return perform_feature_extraction(
         input_dir,
@@ -220,6 +221,7 @@ def preprocess_3des(
         enable_external_labels=enable_external_labels,
         label_map_xlsx=label_map_xlsx,
         strict_label_mode=strict_label_mode,
+        force_variance_poi=force_variance_poi,
     )
 
 
@@ -279,7 +281,7 @@ def attack_3des(
     target_key: str = "session",
     return_confidence: bool = False,
     n_attack: int = 0,
-    pure_science: bool = False,
+    pure_science: bool = True,
 ) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
     if target_key == "master":
         from src.inference_masterkey import run_master_key_attack

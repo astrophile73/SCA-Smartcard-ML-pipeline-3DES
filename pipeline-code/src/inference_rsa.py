@@ -48,9 +48,12 @@ def perform_rsa_attack(features_path, meta_path, model_dir, component_name):
     import os
     comp_tag = component_name.split('_')[-1].lower()
     
-    # Try to find ensemble models first (support model_dir/rsa subfolder).
+    # Try to find ensemble models first (support model_dir/rsa or model_dir/Ensemble_RSA subfolder).
     if os.path.isdir(os.path.join(model_dir, "rsa")):
         model_dir = os.path.join(model_dir, "rsa")
+    elif os.path.isdir(os.path.join(model_dir, "Ensemble_RSA")):
+        model_dir = os.path.join(model_dir, "Ensemble_RSA")
+    
     ensemble_pattern = os.path.join(model_dir, f"rsa_{comp_tag}_model*.pth")
     model_paths = sorted(glob.glob(ensemble_pattern))
     
@@ -69,8 +72,22 @@ def perform_rsa_attack(features_path, meta_path, model_dir, component_name):
     models = []
     for p in model_paths:
         try:
-            model = create_rsa_model(input_size=X.shape[1])
-            model.load_state_dict(torch.load(p, map_location=device, weights_only=False))
+            # Load checkpoint first to infer expected input dimension
+            checkpoint = torch.load(p, map_location=device, weights_only=False)
+            
+            # Infer input_size from the first linear layer's weight shape
+            # shared_features.0.weight has shape (2048, input_size)
+            inferred_input_size = None
+            if "shared_features.0.weight" in checkpoint:
+                inferred_input_size = checkpoint["shared_features.0.weight"].shape[1]
+            
+            # Use inferred size if available, otherwise fall back to current feature dimension
+            input_size = inferred_input_size if inferred_input_size is not None else X.shape[1]
+            
+            logger.debug(f"Creating model with input_size={input_size} (inferred={inferred_input_size}, current_features={X.shape[1]})")
+            
+            model = create_rsa_model(input_size=input_size)
+            model.load_state_dict(checkpoint, strict=True)
             model = model.to(device)
             model.eval()
             models.append(model)
@@ -147,9 +164,23 @@ def attack_all_rsa_components(features_path, meta_path, model_dir):
     # RSATOOL LOGIC: Validate consistency and fix INVq if P and Q are strong
     logger.info("Verifying RSA consistency via rsatool logic...")
     n_preds = len(results['RSA_CRT_P'])
+    
+    # Helper to strip trailing zero bytes from 128-byte zero-padded hex strings
+    def strip_rsa_padding(hex_str):
+        """Strip trailing '00' pairs from RSA predictions that are zero-padded to 256 chars (128 bytes)."""
+        if not hex_str or len(hex_str) < 2:
+            return hex_str
+        while hex_str.endswith('00') and len(hex_str) > 2:
+            hex_str = hex_str[:-2]
+        return hex_str
+    
+    derive_success = 0
+    derive_fail = 0
+    
     for i in range(n_preds):
         p_hex = results['RSA_CRT_P'][i]
         q_hex = results['RSA_CRT_Q'][i]
+        
         if p_hex and q_hex:
             derived = derive_rsa_crt(p_hex, q_hex)
             if derived:
@@ -159,8 +190,31 @@ def attack_all_rsa_components(features_path, meta_path, model_dir):
                 results['RSA_CRT_QINV'][i] = derived['QINV']
                 results['RSA_CRT_DP'][i] = derived['DP']
                 results['RSA_CRT_DQ'][i] = derived['DQ']
+                derive_success += 1
                 if i == 0:
                     logger.info(f"Trace {i}: Derived consistent CRT components (P, Q, DP, DQ, QINV)")
+            else:
+                # Derive failed: strip padding from original predictions as fallback
+                logger.debug(f"Trace {i}: derive_rsa_crt failed for valid P/Q; using padded originals with trailing zeros stripped")
+                results['RSA_CRT_P'][i] = strip_rsa_padding(p_hex)
+                results['RSA_CRT_Q'][i] = strip_rsa_padding(q_hex)
+                results['RSA_CRT_DP'][i] = strip_rsa_padding(results['RSA_CRT_DP'][i])
+                results['RSA_CRT_DQ'][i] = strip_rsa_padding(results['RSA_CRT_DQ'][i])
+                results['RSA_CRT_QINV'][i] = strip_rsa_padding(results['RSA_CRT_QINV'][i])
+                derive_fail += 1
+        else:
+            # At least one of P or Q is empty: strip padding from all components as fallback
+            if p_hex or q_hex:
+                logger.debug(f"Trace {i}: One of P/Q is missing; stripping trailing zeros from all components")
+            results['RSA_CRT_P'][i] = strip_rsa_padding(p_hex)
+            results['RSA_CRT_Q'][i] = strip_rsa_padding(q_hex)
+            results['RSA_CRT_DP'][i] = strip_rsa_padding(results['RSA_CRT_DP'][i])
+            results['RSA_CRT_DQ'][i] = strip_rsa_padding(results['RSA_CRT_DQ'][i])
+            results['RSA_CRT_QINV'][i] = strip_rsa_padding(results['RSA_CRT_QINV'][i])
+            if not p_hex and not q_hex:
+                derive_fail += 1
+    
+    logger.info(f"RSA consistency check: {derive_success} traces with derived values, {derive_fail} traces with padding stripped as fallback")
     
     return results
 

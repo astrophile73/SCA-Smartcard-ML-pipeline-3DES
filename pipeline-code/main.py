@@ -107,7 +107,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=100, help="Training epochs (Default: 100 as per 99% accuracy mission)")
     parser.add_argument("--models_per_sbox", type=int, default=1, help="3DES models per S-Box (Default: 1)")
     parser.add_argument("--early_stop_patience", type=int, default=8, help="Early stopping patience for training (Default: 8)")
-    parser.add_argument("--file_pattern", default="traces_data_*.npz", help="Pattern to match input files")
+    parser.add_argument("--file_pattern", default="*trace*.*", help="Pattern to match input files (matches traces_data_* and trace_data_* in both .csv and .npz)")
     parser.add_argument("--use_existing_pois", action="store_true", help="Use POIs from Optimization folder instead of finding new ones")
     parser.add_argument("--scan_type", choices=["all", "3des", "rsa"], default="all", help="Attack type to perform (3des, rsa, or all)")
     parser.add_argument("--card_type", choices=["visa", "mastercard", "universal"], default="universal", help="Profile (visa, mastercard, universal)")
@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--start_sbox", type=int, default=1, help="Start processing from specific S-Box (1-8)")
     parser.add_argument("--model_root", default="models", help="Model root containing /3des and /rsa subfolders")
     parser.add_argument("--model_dir", help="(Deprecated) Override model root for attack/training")
-    parser.add_argument("--pure_science", action="store_true", help="Scientific validation mode: Disable all reference fallbacks and report pure ML accuracy")
+    parser.add_argument("--pure_science", action="store_true", default=True, help="Scientific validation mode:...")
     parser.add_argument("--target_key", choices=["session", "master"], default="session", help="Target key for 3DES attack: Session Key (Generic) or Master Key (Derivation)")
     parser.add_argument("--enable_external_labels", action="store_true", help="Enable external 3DES key labels (e.g., Visa) from XLSX mapping")
     parser.add_argument("--label_map_xlsx", default="", help="Path to XLSX containing PROFILE/TRACK2 and 3DES key columns")
@@ -148,29 +148,34 @@ def main():
         if not os.path.exists(d):
             os.makedirs(d)
 
-    have_3des = _has_trace_type(args.input_dir, args.file_pattern, args.card_type, "3des")
-    have_rsa = _has_trace_type(args.input_dir, args.file_pattern, args.card_type, "rsa")
+    have_3des = _has_trace_type(args.input_dir, args.file_pattern, "universal", "3des")
+    have_rsa = _has_trace_type(args.input_dir, args.file_pattern, "universal", "rsa")
 
     processed_3des = os.path.join(args.processed_dir, "3des")
     processed_rsa = os.path.join(args.processed_dir, "rsa")
     meta_path_3des = os.path.join(processed_3des, "Y_meta.csv")
     meta_path_rsa = os.path.join(processed_rsa, "Y_meta.csv")
 
+    # In attack mode, check if processed features already exist (from previous training)
+    has_processed_3des = args.mode == "attack" and os.path.exists(meta_path_3des)
+    has_processed_rsa = args.mode == "attack" and os.path.exists(meta_path_rsa)
+
     # Auto behavior: if user requests one type but only the other exists, run what exists.
     want_3des = args.scan_type in ["all", "3des"] or (args.scan_type == "rsa" and (not have_rsa) and have_3des)
     want_rsa = args.scan_type in ["all", "rsa"] or (args.scan_type == "3des" and (not have_3des) and have_rsa)
 
     # Migrate legacy POIs (Optimization/*.npy) into the new subfolder layout if needed.
-    if have_3des:
+    if have_3des or has_processed_3des:
         _maybe_migrate_legacy_pois(args.opt_dir, "3des")
-    if have_rsa:
+    if have_rsa or has_processed_rsa:
         _maybe_migrate_legacy_pois(args.opt_dir, "rsa")
 
-    # Removed hard guard to allow recomputing POIs in attack mode.
+    # FIX: In attack mode, use existing processed features WITHOUT re-extraction.
+    # Re-extracting features from input causes POI misalignment and breaks models.
 
     # STEP 1: Feature Engineering (Ingest -> Processed)
-    # MANDATORY: Preprocess runs for every mode to ensure fresh data and card segregation
-    if args.mode in ["full", "preprocess", "train", "attack"]:
+    # In attack mode with existing processed features, skip preprocessing
+    if args.mode in ["full", "preprocess", "train"]:
         from src.pipeline_3des import preprocess_3des
         from src.pipeline_rsa import preprocess_rsa
 
@@ -183,16 +188,17 @@ def main():
                 processed_3des,
                 args.opt_dir,
                 args.file_pattern,
-                args.card_type,
+                "universal",  # ALWAYS extract all traces; card_type filtering happens at attack time
                 args.use_existing_pois,
                 include_secrets_3des,
                 args.enable_external_labels,
                 args.label_map_xlsx,
                 args.strict_label_mode,
+                force_variance_poi=(args.mode in ["full", "train", "preprocess"]),  # Use deterministic variance-based POI for all preprocessing/training
             )
             if not meta_path_3des:
                 meta_path_3des = os.path.join(processed_3des, "Y_meta.csv")
-        else:
+        elif args.mode != "attack":
             logger.warning("No 3DES traces detected in input_dir.")
 
         if have_rsa:
@@ -202,13 +208,15 @@ def main():
                 processed_rsa,
                 args.opt_dir,
                 args.file_pattern,
-                args.card_type,
+                "universal",  # ALWAYS extract all traces; card_type filtering happens at attack time
                 args.use_existing_pois,
             )
             if not meta_path_rsa:
                 meta_path_rsa = os.path.join(processed_rsa, "Y_meta.csv")
-        else:
+        elif args.mode != "attack":
             logger.warning("No RSA traces detected in input_dir.")
+    elif args.mode == "attack":
+        logger.info("[STEP 1] Attack mode: Using existing processed features...")
 
     # [STEP 2] Training Models (3DES & RSA)
     if args.mode in ["full", "train"]:
@@ -241,7 +249,7 @@ def main():
     rsa_predictions = None
 
     # [STEP 3] 3DES Attack
-    if want_3des and have_3des and args.mode in ["full", "attack"]:
+    if (want_3des and (have_3des or has_processed_3des)) and args.mode in ["full", "attack"]:
         logger.info("[STEP 3] Running 3DES Attack (Target: %s)...", args.target_key)
         try:
             from src.pipeline_3des import attack_3des
@@ -274,7 +282,7 @@ def main():
             predicted_3des = None
 
     # [STEP 4] RSA Attack
-    if want_rsa and have_rsa and args.mode in ["full", "attack"]:
+    if (want_rsa and (have_rsa or has_processed_rsa)) and args.mode in ["full", "attack"]:
         logger.info("[STEP 4] Attacking RSA components...")
         try:
             from src.pipeline_rsa import attack_rsa
@@ -283,17 +291,51 @@ def main():
         except Exception as e:
             logger.warning(f"RSA attack failed: {e}")
 
-    # [STEP 5] Final Report Generation (single merged report)
+    # [STEP 5] Final Report Generation (unified single rows with both 3DES and RSA)
     if args.mode in ["full", "attack"]:
         logger.info("[STEP 5] Generating Reports (CSV/XLSX)...")
-        from src.output_gen import OutputGenerator
+        from src.output_gen import OutputGenerator, _normalize_hex
         import pandas as pd
 
         gen = OutputGenerator(template_path="KALKi Template.csv")
         output_base = os.path.join(args.output_dir, f"Final_Report_{args.card_type}_{args.target_key}")
 
-        frames = []
-        if want_3des and have_3des and meta_path_3des and os.path.exists(meta_path_3des):
+        # When both 3DES and RSA exist, only generate rows for traces that have BOTH results
+        if want_3des and (have_3des or has_processed_3des) and want_rsa and (have_rsa or has_processed_rsa) and meta_path_3des and meta_path_rsa:
+            # Read both metadata files
+            df_3des_meta = pd.read_csv(meta_path_3des)
+            df_rsa_meta = pd.read_csv(meta_path_rsa)
+            
+            # Determine the number of traces that have BOTH results
+            n_3des_traces = len(df_3des_meta)
+            n_rsa_traces = len(df_rsa_meta)
+            n_both_traces = min(n_3des_traces, n_rsa_traces)
+            
+            logger.info(f"Generating unified report: {n_3des_traces} 3DES traces, {n_rsa_traces} RSA traces, combining {n_both_traces}")
+            
+            # Limit 3DES metadata to rows that have RSA equivalents
+            df_3des_limited = df_3des_meta.iloc[:n_both_traces].reset_index(drop=True)
+            
+            # Generate unified rows with BOTH predictions
+            df_unified = gen.build_rows(
+                meta_path_3des,  # Use path for validation, but we'll pass limited metadata below
+                predicted_3des=predicted_3des,
+                predicted_rsa=rsa_predictions,
+                pin=pin_found_3des if want_3des else pin_found_rsa,
+                final_3des_key=final_3des_key,
+                pure_science=args.pure_science,
+                card_type=args.card_type,
+            )
+            
+            # Keep only rows that have both predictions (first n_both_traces)
+            if len(df_unified) > n_both_traces:
+                df_unified = df_unified.iloc[:n_both_traces].reset_index(drop=True)
+            
+            gen.write_report(df_unified, output_base)
+            logger.info("Pipeline Complete. Generated unified report with %d rows (both 3DES + RSA)", len(df_unified))
+        
+        # Fall back to single attack if only 3DES or RSA available
+        elif want_3des and (have_3des or has_processed_3des) and meta_path_3des:
             df_3des = gen.build_rows(
                 meta_path_3des,
                 predicted_3des=predicted_3des,
@@ -303,9 +345,10 @@ def main():
                 pure_science=args.pure_science,
                 card_type=args.card_type,
             )
-            frames.append(df_3des)
-
-        if want_rsa and have_rsa and meta_path_rsa and os.path.exists(meta_path_rsa):
+            gen.write_report(df_3des, output_base)
+            logger.info("Pipeline Complete. Generated 3DES-only report with %d rows", len(df_3des))
+            
+        elif want_rsa and (have_rsa or has_processed_rsa) and meta_path_rsa:
             df_rsa = gen.build_rows(
                 meta_path_rsa,
                 predicted_3des=None,
@@ -315,12 +358,9 @@ def main():
                 pure_science=args.pure_science,
                 card_type=args.card_type,
             )
-            frames.append(df_rsa)
-
-        if frames:
-            df_all = pd.concat(frames, ignore_index=True)
-            gen.write_report(df_all, output_base)
-            logger.info("Pipeline Complete. Reports in: %s", args.output_dir)
+            gen.write_report(df_rsa, output_base)
+            logger.info("Pipeline Complete. Generated RSA-only report with %d rows", len(df_rsa))
+        
         else:
             logger.warning("No report generated: no matching metadata found.")
 

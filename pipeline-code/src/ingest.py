@@ -19,7 +19,7 @@ class TraceDataset:
     def __init__(
         self,
         input_dir: str,
-        file_pattern: str = "traces_data_*.npz",
+        file_pattern: str = "*trace*.*",
         card_type: str = "universal",
         trace_type: str = "all",
         external_label_map: Optional[Dict[str, Dict[str, str]]] = None,
@@ -43,13 +43,24 @@ class TraceDataset:
         else:
             self.files = all_files
 
-        # Filter by trace type (3des vs rsa) by inspecting lightweight NPZ keys.
+        # Filter by trace type (3des vs rsa) by inspecting lightweight NPZ keys and filename heuristics.
         if self.files and trace_type and trace_type.lower() not in ["all", "any", "both"]:
             tt = trace_type.lower()
             filtered = []
             for f in self.files:
                 # Quick filename heuristic first
                 name = os.path.basename(f).lower()
+                ext = os.path.splitext(f)[1].lower()
+                
+                # For CSV files, infer trace type from filename
+                if ext == ".csv":
+                    if tt == "3des" and "rsa" not in name:
+                        filtered.append(f)  # CSV without 'rsa' in name is 3DES
+                    elif tt == "rsa" and "rsa" in name:
+                        filtered.append(f)  # CSV with 'rsa' in name is RSA
+                    continue
+                
+                # For NPZ files, inspect keys
                 if tt == "3des" and "rsa" in name:
                     continue
                 if tt == "rsa" and "rsa" not in name:
@@ -85,6 +96,48 @@ class TraceDataset:
             self.files = filtered
             logger.info(f"Filtering for trace type '{trace_type}': {len(self.files)} file(s) kept.")
 
+        # Deduplication: Prefer NPZ over CSV when both exist for the same base name
+        # (CSV traces may be downsampled versions; use full-resolution NPZ traces)
+        # EXCEPTION: For RSA, if CSV files have more total traces, use CSV instead
+        # EXCEPTION: For 3DES with Mastercard, if NPZ is > 500MB, use CSV with ground truth (consolidation issue)
+        if self.files:
+            # For 3DES, prefer NPZ but check for memory issues with large consolidated files
+            if self.trace_type == "3des":
+                npz_files = [f for f in self.files if f.endswith('.npz')]
+                csv_files = [f for f in self.files if f.endswith('.csv')]
+                
+                # Filter CSV files to only those with ground truth labels (T_DES_* columns)
+                # These have pattern like "traces_data_1000T_1.csv" not "traces_data_3des_*.csv"
+                csv_with_labels = [f for f in csv_files if 'traces_data_' in f and 'T_' in f and '3des' not in os.path.basename(f).lower()]
+                
+                # Check if NPZ files are too large (>500MB suggests consolidated trace_data array)
+                use_csv_due_to_size = False
+                if npz_files:
+                    total_npz_size = sum(os.path.getsize(f) for f in npz_files)
+                    if total_npz_size > 500 * 1024 * 1024:  # 500MB threshold
+                        logger.info(f"3DES NPZ files are large ({total_npz_size / (1024**3):.1f}GB). Using CSV files for better memory handling.")
+                        use_csv_due_to_size = True
+                
+                if use_csv_due_to_size and csv_with_labels:
+                    logger.info(f"Deduplication (3DES): Switching from NPZ to CSV due to memory constraints. Using {len(csv_with_labels)} CSV file(s) with ground truth labels")
+                    self.files = csv_with_labels
+                elif npz_files:
+                    csv_removed = len(csv_files)
+                    if csv_removed > 0:
+                        logger.info(f"Deduplication (3DES): Removed {csv_removed} CSV file(s) in favor of NPZ files")
+                    self.files = npz_files
+            
+            # For RSA, use CSV files if available (they contain more traces than NPZ)
+            elif self.trace_type == "rsa":
+                csv_files = [f for f in self.files if f.endswith('.csv')]
+                npz_files = [f for f in self.files if f.endswith('.npz')]
+                
+                if csv_files:
+                    # CSV files have compatible trace format and more data
+                    logger.info(f"RSA: Using {len(csv_files)} CSV file(s) instead of NPZ for better trace coverage")
+                    self.files = csv_files
+
+
         if not self.files:
             # Check if the directory itself is a trace directory (loose .npy files)
             if os.path.exists(os.path.join(input_dir, "trace_data.npy")):
@@ -104,7 +157,22 @@ class TraceDataset:
 
     @staticmethod
     def _normalize_key_hex(key_val: str) -> str:
-        val = str(key_val or "").strip().replace(" ", "").upper()
+        # Handle numpy types and ensure it's a string
+        try:
+            # For numpy scalars, call .item() to get Python native type
+            if hasattr(key_val, "item"):
+                key_val = key_val.item()
+        except Exception:
+            pass
+            
+        val = str(key_val or "").strip()
+        if not val or val.lower() == "nan":
+            return ""
+            
+        # Remove spaces and convert to uppercase
+        val = val.replace(" ", "").upper()
+        
+        # Filter to hex characters (0-9, A-F) using translate for efficiency
         val = "".join(ch for ch in val if ch in "0123456789ABCDEF")
         return val
 
@@ -155,37 +223,91 @@ class TraceDataset:
                     except Exception as e:
                         logger.warning(f"Failed to read CSV {csv_path}: {e}")
                 
-                # 3. Load Data Container (NPZ or Directory)
-                if os.path.isdir(fpath):
-                    # Virtual "data" object that behaves like np.load result
-                    class LooseData:
-                        def __init__(self, d): 
-                            self.d = d
-                            self.files = [f.replace(".npy", "") for f in os.listdir(d) if f.endswith(".npy")]
-                        def __getitem__(self, k): return np.load(os.path.join(self.d, k + ".npy"), allow_pickle=True)
-                        def __contains__(self, k): return os.path.exists(os.path.join(self.d, k + ".npy"))
+                # Check if fpath itself is a CSV file
+                fpath_ext = os.path.splitext(fpath)[1].lower()
+                is_csv_file = fpath_ext == ".csv"
+                
+                # If fpath is a CSV, load it as the primary data source
+                if is_csv_file:
+                    try:
+                        csv_df = pd.read_csv(fpath)
+                        logger.info(f"Loaded CSV trace file: {os.path.basename(fpath)}")
+                    except Exception as e:
+                        logger.warning(f"Failed to read CSV {fpath}: {e}")
+                        continue
+                
+                # 3. Load Data Container (NPZ or Directory) - optional supplement if not CSV-only
+                if not is_csv_file:
+                    if os.path.isdir(fpath):
+                        # Virtual "data" object that behaves like np.load result
+                        class LooseData:
+                            def __init__(self, d): 
+                                self.d = d
+                                self.files = [f.replace(".npy", "") for f in os.listdir(d) if f.endswith(".npy")]
+                            def __getitem__(self, k): return np.load(os.path.join(self.d, k + ".npy"), allow_pickle=True)
+                            def __contains__(self, k): return os.path.exists(os.path.join(self.d, k + ".npy"))
+                            def __enter__(self): return self
+                            def __exit__(self, *args): pass
+                        data_manager = LooseData(fpath)
+                    else:
+                        # NPZ files return NpzFile which supports context manager
+                        # .npy files return an array which does NOT support context manager
+                        # Wrap array in a simple context manager
+                        try:
+                            loaded = np.load(fpath, allow_pickle=True)
+                            if isinstance(loaded, np.ndarray):
+                                # Single .npy file - wrap it
+                                class SingleNpyData:
+                                    def __init__(self, arr):
+                                        self.arr = arr
+                                        self.files = []
+                                    def __getitem__(self, k): return self.arr
+                                    def __contains__(self, k): return False
+                                    def __enter__(self): return self
+                                    def __exit__(self, *args): pass
+                                data_manager = SingleNpyData(loaded)
+                            else:
+                                # NpzFile object - use directly
+                                data_manager = loaded
+                        except Exception as e:
+                            logger.error(f"Error loading {fpath}: {e}")
+                            continue
+                else:
+                    # For CSV files, create a minimal data manager that provides empty responses
+                    class CSVData:
+                        def __init__(self):
+                            self.files = []
+                        def __contains__(self, k): return False
+                        def __getitem__(self, k): raise KeyError(f"Key {k} not in CSV file")
                         def __enter__(self): return self
                         def __exit__(self, *args): pass
-                    data_manager = LooseData(fpath)
-                else:
-                    data_manager = np.load(fpath, allow_pickle=True)
+                    data_manager = CSVData()
 
                 with data_manager as data:
-                    # Determine N_Traces robustly.
-                    # Some datasets have a short 'no' array (e.g., 10 rows) while trace_data has full traces.
-                    # Training/feature extraction must always align metadata rows with trace_data rows.
-                    if 'trace_data' in data:
-                        n_traces = int(data['trace_data'].shape[0])
-                    elif 'no' in data:
-                        n_traces = int(data['no'].shape[0])
-                    else:
-                        # Fallback infer from any available key
-                        keys = [k for k in data.files if k != 'trace_data']
-                        if keys and len(data[keys[0]]) > 0:
-                            val = data[keys[0]]
-                            n_traces = int(val.shape[0]) if getattr(val, "ndim", 0) > 0 else 1
+                    # Determine N_Traces robustly from CSV or NPZ
+                    n_traces = None
+                    
+                    # If we have a CSV, use its length
+                    if not csv_df.empty:
+                        n_traces = len(csv_df)
+                    elif is_csv_file:
+                        logger.warning(f"CSV file {fpath} is empty")
+                        continue
+                    
+                    # Otherwise try to get from NPZ/data
+                    if n_traces is None:
+                        if 'trace_data' in data:
+                            n_traces = int(data['trace_data'].shape[0])
+                        elif 'no' in data:
+                            n_traces = int(data['no'].shape[0])
                         else:
-                            raise ValueError(f"Could not determine trace count for {fpath}")
+                            # Fallback infer from any available key
+                            keys = [k for k in data.files if k != 'trace_data']
+                            if keys and len(data[keys[0]]) > 0:
+                                val = data[keys[0]]
+                                n_traces = int(val.shape[0]) if getattr(val, "ndim", 0) > 0 else 1
+                            else:
+                                raise ValueError(f"Could not determine trace count for {fpath}")
 
                     if 'no' in data:
                         try:
@@ -228,12 +350,35 @@ class TraceDataset:
                     source_key_cols = {}
                     for key_col in ["T_DES_KENC", "T_DES_KMAC", "T_DES_KDEK"]:
                         if not csv_df.empty and key_col in csv_df.columns:
-                            source = csv_df[key_col].astype(str).tolist()
+                            # From CSV - convert all to strings
+                            source = [str(x).strip() if pd.notna(x) else "" for x in csv_df[key_col]]
                         elif key_col in data:
+                            # From NPZ - extract safely
                             val = data[key_col]
-                            source = [str(x) for x in val] if getattr(val, "ndim", 0) > 0 else [str(val)] * n_traces
+                            if getattr(val, "ndim", 0) > 0:
+                                # Array of values
+                                source = []
+                                for x in val:
+                                    try:
+                                        # Handle numpy scalars
+                                        if hasattr(x, "item"):
+                                            x = x.item()
+                                        source.append(str(x).strip() if x else "")
+                                    except Exception:
+                                        source.append("")
+                            else:
+                                # Single scalar value
+                                try:
+                                    if hasattr(val, "item"):
+                                        val = val.item()
+                                    single_key = str(val).strip() if val else ""
+                                    source = [single_key] * n_traces
+                                except Exception:
+                                    source = [""] * n_traces
                         else:
                             source = [""] * n_traces
+                        
+                        # Ensure length match
                         if len(source) != n_traces:
                             source = pad_list(source, n_traces)
                         source_key_cols[key_col] = source
@@ -241,9 +386,13 @@ class TraceDataset:
                     mapped_kenc, mapped_kmac, mapped_kdek = [], [], []
                     unresolved = 0
                     for idx, t2 in enumerate(df["Track2"]):
-                        src_kenc = self._normalize_key_hex(source_key_cols["T_DES_KENC"][idx] if idx < n_traces else "")
-                        src_kmac = self._normalize_key_hex(source_key_cols["T_DES_KMAC"][idx] if idx < n_traces else "")
-                        src_kdek = self._normalize_key_hex(source_key_cols["T_DES_KDEK"][idx] if idx < n_traces else "")
+                        try:
+                            src_kenc = self._normalize_key_hex(source_key_cols["T_DES_KENC"][idx] if idx < len(source_key_cols["T_DES_KENC"]) else "")
+                            src_kmac = self._normalize_key_hex(source_key_cols["T_DES_KMAC"][idx] if idx < len(source_key_cols["T_DES_KMAC"]) else "")
+                            src_kdek = self._normalize_key_hex(source_key_cols["T_DES_KDEK"][idx] if idx < len(source_key_cols["T_DES_KDEK"]) else "")
+                        except Exception as e:
+                            logger.error(f"Error normalizing keys at idx {idx}: {e}")
+                            src_kenc = src_kmac = src_kdek = ""
 
                         if self._is_valid_3des_key(src_kenc) and self._is_valid_3des_key(src_kmac) and self._is_valid_3des_key(src_kdek):
                             mapped_kenc.append(src_kenc)
@@ -291,10 +440,13 @@ class TraceDataset:
                     else:
                         acr_source = ["0000000000000000"] * n_traces # Default
                     
-                    # (B2) Load ATC from NPZ if available
-                    if 'ATC' in data:
+                    # (B2) Load ATC from CSV first, then fall back to NPZ
+                    atc_source = []
+                    if not csv_df.empty and 'ATC' in csv_df.columns:
+                        # Read ATC from CSV (e.g., "7A CD" -> "7ACD")
+                        atc_source = csv_df['ATC'].astype(str).tolist()
+                    elif 'ATC' in data:
                         val = data['ATC']
-                        atc_source = []
                         if val.ndim > 0:
                             for x in val:
                                 if isinstance(x, (np.ndarray, list)):
@@ -310,7 +462,8 @@ class TraceDataset:
                                 atc_source = ["".join([str(i) for i in val])] * n_traces
                             else:
                                 atc_source = [str(val)] * n_traces
-                    else:
+                    
+                    if not atc_source:
                         atc_source = [""] * n_traces
                     
                     if len(atc_source) != n_traces: atc_source = pad_list(atc_source, n_traces)
@@ -405,34 +558,37 @@ class TraceDataset:
                                 df[col] = ""
 
                     # (D) Advanced EMV Metadata via Parser
-                    try:
-                        parser = MetadataParser(fpath)
-                        if parser.load_trace():
-                            emv_meta = parser.extract_metadata()
-                            # Map extracted tags to DF columns
-                            if 'ATC' in emv_meta:
-                                df['ATC'] = emv_meta['ATC']
-                            if 'AIP' in emv_meta:
-                                df['AIP'] = emv_meta['AIP']
-                            if 'IAD' in emv_meta:
-                                df['IAD'] = emv_meta['IAD']
-                            if 'PAN' in emv_meta:
-                                df['PAN'] = emv_meta['PAN']
-                            if 'TRACK2' in emv_meta and not df['Track2'].iloc[0]:
-                                df['Track2'] = emv_meta['TRACK2']
-                            if 'EncryptedPIN' in emv_meta:
-                                df['EncryptedPIN'] = emv_meta['EncryptedPIN']
-                            if 'apdu' in emv_meta and 'apdu' in df.columns:
-                                # We might prefer the parsed APDU if it was extracted better
-                                pass 
-                    except Exception as e:
-                        logger.warning(f"Metadata parser failed for {fpath}: {e}")
+                    # Skip MetadataParser for CSV files - already loaded above
+                    if not is_csv_file:
+                        try:
+                            parser = MetadataParser(fpath)
+                            if parser.load_trace():
+                                emv_meta = parser.extract_metadata()
+                                # Map extracted tags to DF columns
+                                if 'ATC' in emv_meta:
+                                    df['ATC'] = emv_meta['ATC']
+                                if 'AIP' in emv_meta:
+                                    df['AIP'] = emv_meta['AIP']
+                                if 'IAD' in emv_meta:
+                                    df['IAD'] = emv_meta['IAD']
+                                if 'PAN' in emv_meta:
+                                    df['PAN'] = emv_meta['PAN']
+                                if 'TRACK2' in emv_meta and not df['Track2'].iloc[0]:
+                                    df['Track2'] = emv_meta['TRACK2']
+                                if 'EncryptedPIN' in emv_meta:
+                                    df['EncryptedPIN'] = emv_meta['EncryptedPIN']
+                                if 'apdu' in emv_meta and 'apdu' in df.columns:
+                                    # We might prefer the parsed APDU if it was extracted better
+                                    pass 
+                        except Exception as e:
+                            logger.warning(f"Metadata parser failed for {fpath}: {e}")
 
                     meta_list.append(df)
                     
             except Exception as e:
+                import traceback
                 logger.error(f"Error loading {fpath}: {e}")
-
+                logger.error(f"Traceback: {traceback.format_exc()}")
         if not meta_list:
              return pd.DataFrame()
         
@@ -467,15 +623,31 @@ class TraceDataset:
             # If compressed, mmap_mode might not work or just loads whole thing.
             
             try:
-                # Attempt to use mmap_mode='r'
-                data = np.load(fpath, mmap_mode='r')
-                traces = data['trace_data']
-                
-                # If traces is just (N, samples), we can slice
-                # but with mmap, fancy indexing might trigger full read if not careful?
-                # Actually, fancy indexing on mmap array works but reads from disk.
-                
-                selected = traces[local_indices]
+                # Check if file is CSV
+                fpath_ext = os.path.splitext(fpath)[1].lower()
+                if fpath_ext == ".csv":
+                    # Load CSV file
+                    csv_df = pd.read_csv(fpath)
+                    if 'trace_data' not in csv_df.columns:
+                        logger.warning(f"CSV file {fpath} does not have 'trace_data' column")
+                        continue
+                    # CSV stores traces as comma-separated strings, need to parse them
+                    traces_list = []
+                    for trace_str in csv_df['trace_data']:
+                        if isinstance(trace_str, str):
+                            # Parse comma-separated string into array
+                            trace_vals = np.array([float(x.strip()) for x in trace_str.split(',')])
+                        else:
+                            # Already numeric
+                            trace_vals = np.array(trace_str)
+                        traces_list.append(trace_vals)
+                    traces = np.array(traces_list)
+                    selected = traces[local_indices]
+                else:
+                    # Attempt to use mmap_mode='r' for NPZ files
+                    data = np.load(fpath, mmap_mode='r')
+                    traces = data['trace_data']
+                    selected = traces[local_indices]
                 
                 for glob_idx, trace in zip(global_indices, selected):
                     results[glob_idx] = trace
@@ -490,23 +662,78 @@ class TraceDataset:
     def get_all_traces_iterator(self, batch_size=1000, target_apdu=None):
         """
         Iterate trace content with optional APDU-based segmentation.
+        Handles both NPZ and CSV files.
         """
         for fpath in self.files:
+            fpath_ext = os.path.splitext(fpath)[1].lower()
+            is_csv_file = fpath_ext == ".csv"
+            
             if os.path.isdir(fpath):
                 # Loose files in directory
                 trace_path = os.path.join(fpath, "trace_data.npy")
                 if not os.path.exists(trace_path): continue
                 full_traces = np.load(trace_path, mmap_mode='r')
+                data = None
+            elif is_csv_file:
+                # Load CSV file
+                try:
+                    csv_df = pd.read_csv(fpath)
+                    # Try to find trace_data column in CSV
+                    if 'trace_data' in csv_df.columns:
+                        # CSV stores traces as comma-separated strings, need to parse them
+                        traces_list = []
+                        max_len = 0
+                        for trace_str in csv_df['trace_data']:
+                            if isinstance(trace_str, str):
+                                # Parse comma-separated string into array
+                                try:
+                                    trace_vals = np.array([float(x.strip()) for x in trace_str.split(',')])
+                                except ValueError as ve:
+                                    logger.warning(f"Failed to parse trace in {os.path.basename(fpath)}: {ve}, skipping")
+                                    continue
+                            else:
+                                # Already numeric
+                                trace_vals = np.array(trace_str)
+                            traces_list.append(trace_vals)
+                            max_len = max(max_len, len(trace_vals))
+                        
+                        # Ensure all traces have the same length (pad or truncate)
+                        if traces_list:
+                            normalized_traces = []
+                            for trace_vals in traces_list:
+                                if len(trace_vals) < max_len:
+                                    # Pad with last value
+                                    padded = np.pad(trace_vals, (0, max_len - len(trace_vals)), mode='edge')
+                                elif len(trace_vals) > max_len:
+                                    # Truncate
+                                    padded = trace_vals[:max_len]
+                                else:
+                                    padded = trace_vals
+                                normalized_traces.append(padded)
+                            full_traces = np.array(normalized_traces, dtype=np.float64)
+                        else:
+                            logger.warning(f"No valid traces parsed from {os.path.basename(fpath)}")
+                            continue
+                    else:
+                        # CSV might not have raw traces, just metadata
+                        logger.warning(f"CSV file {fpath} does not have 'trace_data' column, skipping")
+                        continue
+                except Exception as e:
+                    logger.warning(f"Failed to load CSV {fpath}: {e}")
+                    continue
+                data = None
             else:
-                data = np.load(fpath, mmap_mode='r')
+                # Load NPZ file with memory mapping to handle large files
+                data = np.load(fpath, mmap_mode='r', allow_pickle=True)
                 if 'trace_data' not in data: continue
+                # Keep as memory-mapped, don't load into RAM
                 full_traces = data['trace_data']
             
             n = full_traces.shape[0]
             
             # Find command indices if target_apdu is specified
             apdu_indices = None
-            if target_apdu:
+            if target_apdu and data is not None:
                 for key in ['Verify_command', 'ACR_send', 'apdu']:
                     if key in data:
                         cmds = data[key]
@@ -517,9 +744,13 @@ class TraceDataset:
                         pass
             
             for i in range(0, n, batch_size):
+                # Extract batch slice from memory-mapped array (loads only this batch)
+                end_idx = min(i + batch_size, n)
+                batch_traces = np.array(full_traces[i:end_idx], copy=True)  # Copy to ensure contiguity
+                
                 # We yield the meta as well
-                meta_subset = self.metadata[self.metadata['trace_file'] == fpath].iloc[i:i+batch_size]
-                yield full_traces[i:i+batch_size], meta_subset
+                meta_subset = self.metadata[self.metadata['trace_file'] == fpath].iloc[i:end_idx]
+                yield batch_traces, meta_subset
 
 if __name__ == "__main__":
     ds = TraceDataset("Input")

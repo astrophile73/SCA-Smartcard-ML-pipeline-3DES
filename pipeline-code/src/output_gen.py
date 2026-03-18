@@ -86,6 +86,19 @@ def _format_3des_32_hex(k_hex: str) -> str:
     return k[:32]
 
 
+def _strip_trailing_zeros_rsa(hex_str: str) -> str:
+    """
+    Strip trailing zero bytes from RSA component hex strings.
+    RSA predictions are padded to 128 bytes but actual components are shorter.
+    """
+    if not hex_str or len(hex_str) < 2:
+        return hex_str
+    # Remove trailing '00' pairs (zero bytes)
+    while hex_str.endswith('00') and len(hex_str) > 2:
+        hex_str = hex_str[:-2]
+    return hex_str
+
+
 class OutputGenerator:
     """
     Strict/pure report generator:
@@ -131,12 +144,43 @@ class OutputGenerator:
             out["AIP"] = _normalize_hex(row.get("AIP", ""))
             out["IAD"] = _normalize_hex(row.get("IAD", ""))
 
-            # 3DES predictions (prefer explicit predicted_3des).
-            # Support either new-style fields (3DES_KENC/...) or legacy final_3des_key (single MK).
+            # 3DES predictions: If single master key recovered, derive session keys per-transaction using ATC.
             if predicted_3des:
-                for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
-                    v = _value_for_row(predicted_3des.get(col), idx)
-                    out[col] = _format_3des_32_hex(v) if v else ""
+                # Check if this is a single master key (all 3 key types have same value + reference_fallback indicator)
+                kenc = _normalize_hex(predicted_3des.get("3DES_KENC", ""))
+                kmac = _normalize_hex(predicted_3des.get("3DES_KMAC", ""))
+                kdek = _normalize_hex(predicted_3des.get("3DES_KDEK", ""))
+                is_reference_fallback = predicted_3des.get("_reference_fallback", False) or predicted_3des.get("_slot_alignment", {}).get("applied", False)
+                
+                # If all three keys are identical, treat as single master key to be derived per-ATC
+                if kenc == kmac == kdek and kenc and ("T_DES_KENC" in meta_df.columns or "ATC" in meta_df.columns):
+                    try:
+                        from src.crypto import derive_emv_session_keys
+                        atc_val = str(meta_df.iloc[idx].get("ATC", "0000")).strip()
+                        if atc_val and atc_val.lower() != "nan":
+                            derived = derive_emv_session_keys(kenc, atc_val)
+                            if derived:
+                                out["3DES_KENC"] = _format_3des_32_hex(derived.get("KENC", ""))
+                                out["3DES_KMAC"] = _format_3des_32_hex(derived.get("KMAC", ""))
+                                out["3DES_KDEK"] = _format_3des_32_hex(derived.get("KDEK", ""))
+                            else:
+                                out["3DES_KENC"] = _format_3des_32_hex(kenc)
+                                out["3DES_KMAC"] = _format_3des_32_hex(kmac)
+                                out["3DES_KDEK"] = _format_3des_32_hex(kdek)
+                        else:
+                            out["3DES_KENC"] = _format_3des_32_hex(kenc)
+                            out["3DES_KMAC"] = _format_3des_32_hex(kmac)
+                            out["3DES_KDEK"] = _format_3des_32_hex(kdek)
+                    except Exception as e:
+                        logger.warning(f"Session key derivation failed for row {idx}: {e}")
+                        out["3DES_KENC"] = _format_3des_32_hex(kenc)
+                        out["3DES_KMAC"] = _format_3des_32_hex(kmac)
+                        out["3DES_KDEK"] = _format_3des_32_hex(kdek)
+                else:
+                    # Per-row predictions or already-differentiated keys
+                    for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
+                        v = _value_for_row(predicted_3des.get(col), idx)
+                        out[col] = _format_3des_32_hex(v) if v else ""
             elif final_3des_key:
                 # Legacy compatibility: emit the first 16-byte key material (32 hex chars).
                 v = _normalize_hex(final_3des_key)
@@ -150,10 +194,11 @@ class OutputGenerator:
                 p = str(pin).strip()
                 out["PIN"] = p if p and p.upper() not in {"FAIL", "NONE", "NAN"} else ""
 
-            # RSA predictions (exact strings; no rstrip/padding that changes value).
+            # RSA predictions (strip trailing zeros from padded predictions).
             if predicted_rsa:
                 for col in ("RSA_CRT_P", "RSA_CRT_Q", "RSA_CRT_DP", "RSA_CRT_DQ", "RSA_CRT_QINV"):
-                    out[col] = _value_for_row(predicted_rsa.get(col), idx)
+                    rsa_val = _value_for_row(predicted_rsa.get(col), idx)
+                    out[col] = _strip_trailing_zeros_rsa(rsa_val) if rsa_val else ""
 
             rows.append(out)
 

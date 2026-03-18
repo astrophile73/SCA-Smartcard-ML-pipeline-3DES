@@ -1,0 +1,115 @@
+﻿2026-03-16 15:14:22,743 - main - INFO - ==================================================
+2026-03-16 15:14:22,743 - main - INFO -    SCA PIPELINE (LEGACY-RESTORE) | Mode: preprocess
+2026-03-16 15:14:22,743 - main - INFO - ==================================================
+2026-03-16 15:14:23,708 - ingest - INFO - Filtering for trace type '3des': 13 file(s) kept.
+2026-03-16 15:14:23,708 - ingest - INFO - Deduplication (3DES): Removed 8 CSV file(s) in favor of NPZ files
+2026-03-16 15:14:23,708 - ingest - INFO - Final trace file count: 5.
+2026-03-16 15:14:28,888 - ingest - INFO - Total traces found: 10000
+2026-03-16 15:14:28,938 - ingest - INFO - Filtering for trace type 'rsa': 1 file(s) kept.
+2026-03-16 15:14:28,938 - ingest - INFO - Final trace file count: 1.
+2026-03-16 15:14:38,776 - ingest - INFO - Total traces found: 1000
+2026-03-16 15:14:45,259 - main - INFO - [STEP 1] Feature Extraction (3DES traces)...
+2026-03-16 15:14:45,259 - ingest - INFO - Filtering for trace type '3des': 13 file(s) kept.
+2026-03-16 15:14:45,259 - ingest - INFO - Deduplication (3DES): Removed 8 CSV file(s) in favor of NPZ files
+2026-03-16 15:14:45,259 - ingest - INFO - Final trace file count: 5.
+2026-03-16 15:14:49,129 - ingest - INFO - Total traces found: 10000
+2026-03-16 15:14:49,222 - feature_eng - INFO - [Pass 1] Global & Targeted POI Search...
+2026-03-16 15:14:57,951 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 500 traces stats...
+2026-03-16 15:15:14,473 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 1000 traces stats...
+2026-03-16 15:15:35,399 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 1500 traces stats...
+2026-03-16 15:15:43,575 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 2000 traces stats...
+2026-03-16 15:15:50,199 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 2500 traces stats...
+2026-03-16 15:15:56,801 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 3000 traces stats...
+2026-03-16 15:16:22,347 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 3500 traces stats...
+2026-03-16 15:16:29,621 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 4000 traces stats...
+2026-03-16 15:16:35,891 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 4500 traces stats...
+2026-03-16 15:16:42,179 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 5000 traces stats...
+2026-03-16 15:17:05,898 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 5500 traces stats...
+2026-03-16 15:17:12,992 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 6000 traces stats...
+2026-03-16 15:17:19,398 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+Pass 1: 6500 traces stats...
+2026-03-16 15:17:26,533 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+python : Traceback (most recent call last):
+At line:1 char:52
++ ... ipeline-3des" ; python retrain_3des_supervised_stage1.py 2>&1 | Out-F ...
++                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last) 
+   ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "I:\freelance\SCA Smartcard ML Pipeline-3des\pipeline-code\main.py", 
+line 361, in <module>
+    main()
+  File "I:\freelance\SCA Smartcard ML Pipeline-3des\pipeline-code\main.py", 
+line 181, in main
+    _, meta_path_3des = preprocess_3des(
+                        ^^^^^^^^^^^^^^^^
+  File "I:\freelance\SCA Smartcard ML 
+Pipeline-3des\pipeline-code\src\pipeline_3des.py", line 211, in preprocess_3des
+    return perform_feature_extraction(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "I:\freelance\SCA Smartcard ML 
+Pipeline-3des\pipeline-code\src\feature_eng.py", line 430, in 
+perform_feature_extraction
+    extract_features(
+  File "I:\freelance\SCA Smartcard ML 
+Pipeline-3des\pipeline-code\src\feature_eng.py", line 123, in extract_features
+    for batch_traces, meta in ds.get_all_traces_iterator(batch_size=500):
+  File "I:\freelance\SCA Smartcard ML 
+Pipeline-3des\pipeline-code\src\ingest.py", line 683, in 
+get_all_traces_iterator
+    full_traces = data['trace_data']
+                  ~~~~^^^^^^^^^^^^^^
+  File "C:\Users\raj50\AppData\Roaming\Python\Python312\site-packages\numpy\lib
+\npyio.py", line 256, in __getitem__
+    return format.read_array(bytes,
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\raj50\AppData\Roaming\Python\Python312\site-packages\numpy\lib
+\format.py", line 822, in read_array
+    array = numpy.ndarray(count, dtype=dtype)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy.core._exceptions._ArrayMemoryError: Unable to allocate 2.93 GiB for an 
+array with shape (393372000,) and data type float64
+Pass 1: 7000 traces stats...
+
+==========================================================================================
+ 3DES SUPERVISED TRAINING - STAGE 1: MASTERCARD ONLY (NATIVE LABELS)
+==========================================================================================
+
+This training stage:
+1. Uses ONLY Mastercard traces from: I:\freelance\SCA-Smartcard-Pipeline-3\Input1\Mastercard
+2. Uses ONLY native CSV columns: T_DES_KENC, T_DES_KMAC, T_DES_KDEK
+3. NO external label mapping (KALKI TEST CARD.xlsx is disabled)
+4. Higher epochs (300) to learn ground truth thoroughly
+5. Output: Correctly trained 3DES models
+
+Ground Truth Keys for Mastercard (expected after attack):
+  KENC: 9E15204313F7318ACB79B90BD986AD29
+  KMAC: 9E15204313F7318ACB79B90BD986AD29
+  KDEK: 9E15204313F7318ACB79B90BD986AD29
+
+
+==========================================================================================
+ STEP 1: BACKUP CURRENT MODELS
+==========================================================================================
+[OK] Models backed up to: 3des-pipeline\models\3des_backup_before_stage1_20260316_151319
+
+==========================================================================================
+ STEP 2: PREPROCESSING - MASTERCARD ONLY (NATIVE LABELS)
+==========================================================================================
+
+Preprocessing Mastercard traces...
+Command: python pipeline-code/main.py --mode preprocess --scan_type 3des --input_dir I:\freelance\SCA-Smartcard-Pipeline-3\Input1\Mastercard --processed_dir 3des-pipeline/Processed/3des_stage1_mastercard --card_type mastercard --opt_dir 3des-pipeline/Optimization
+[ERROR] Preprocessing Mastercard traces failed with code 1

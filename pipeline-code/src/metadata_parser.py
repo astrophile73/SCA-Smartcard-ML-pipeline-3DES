@@ -27,6 +27,10 @@ class MetadataParser:
     def load_trace(self):
         """Loads the .npz file or directory and extracts protocol strings."""
         try:
+            # Skip parsing for CSV files - they should be handled separately
+            if self.trace_path.endswith('.csv'):
+                return False
+            
             if os.path.isdir(self.trace_path):
                 # Loose files in directory
                 class LooseData:

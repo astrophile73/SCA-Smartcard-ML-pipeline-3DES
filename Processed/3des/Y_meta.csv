@@ -1,0 +1,3 @@
+trace_file,trace_idx,ATC_0,ATC_1,ATC_2,ATC_3,ATC_4,ATC_5,ATC_6,ATC_7,ATC,Track2,C7,IO,apdu,EncryptedPIN,AIP,IAD
+I:\freelance\SCA-Smartcard-Pipeline-3\Input1\Visa\GreenVisa\traces_data_3DES_green_card_1T.npz,0,0,0,0,0,0,0,0,214,00 D6,4724091039865619D30052205118010000001F,,,,,,
+I:\freelance\SCA-Smartcard-Pipeline-3\Input1\Visa\GreenVisa\traces_data_rsa_green_card_1T.npz,0,0,0,0,0,0,0,0,0,,4724091039865619D30052205118010000001F,,,,,,

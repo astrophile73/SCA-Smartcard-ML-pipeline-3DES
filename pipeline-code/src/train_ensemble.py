@@ -297,27 +297,21 @@ def train_ensemble(
                     x_sbox_path = os.path.join(input_dir, f"X_s2_sbox{sbox_num}.npy")
                 if os.path.exists(x_sbox_path):
                     X_candidate = np.load(x_sbox_path).astype(np.float32)
-                    # Keep training/inference compatible:
-                    # inference currently loads stage-global features, so we only use per-sbox
-                    # features when their dimensionality matches the global stage features.
-                    if X_curr_global is not None and X_candidate.shape[1] != X_curr_global.shape[1]:
-                        logger.warning(
-                            "Ignoring per-sbox features for %s Stage %d S-Box %d due to dim mismatch "
-                            "(sbox=%d, global=%d). Using stage-global features.",
-                            key_type.upper(),
-                            stage,
-                            sbox_num,
-                            X_candidate.shape[1],
-                            X_curr_global.shape[1],
-                        )
-                        X_curr = X_curr_global
-                    else:
-                        X_curr = X_candidate
-                        # Normalize per-sbox features for stable optimization.
-                        mean_local = np.mean(X_curr, axis=0)
-                        std_local = np.std(X_curr, axis=0)
-                        std_local[std_local == 0] = 1
-                        X_curr = (X_curr - mean_local) / std_local
+                    # ALWAYS use per-sbox features when available (800 dim >> 200 dim global)
+                    # Per-sbox features provide significantly better S-Box classification accuracy
+                    X_curr = X_candidate
+                    # Normalize per-sbox features for stable optimization.
+                    mean_local = np.mean(X_curr, axis=0)
+                    std_local = np.std(X_curr, axis=0)
+                    std_local[std_local == 0] = 1
+                    X_curr = (X_curr - mean_local) / std_local
+                    logger.info(
+                        "Using per-sbox features for %s Stage %d S-Box %d (%d dimensions)",
+                        key_type.upper(),
+                        stage,
+                        sbox_num,
+                        X_curr.shape[1],
+                    )
                 else:
                     X_curr = X_curr_global
 
