@@ -96,46 +96,26 @@ class TraceDataset:
             self.files = filtered
             logger.info(f"Filtering for trace type '{trace_type}': {len(self.files)} file(s) kept.")
 
-        # Deduplication: Prefer NPZ over CSV when both exist for the same base name
-        # (CSV traces may be downsampled versions; use full-resolution NPZ traces)
-        # EXCEPTION: For RSA, if CSV files have more total traces, use CSV instead
-        # EXCEPTION: For 3DES with Mastercard, if NPZ is > 500MB, use CSV with ground truth (consolidation issue)
+        # Deduplication: Prefer CSV over NPZ when both exist for the same base name
+        # CSV files are the source of truth; use NPZ only when CSV is not available.
+        # Policy: CSV-first (better compatibility) → NPZ (full resolution) → fallback
         if self.files:
-            # For 3DES, prefer NPZ but check for memory issues with large consolidated files
-            if self.trace_type == "3des":
-                npz_files = [f for f in self.files if f.endswith('.npz')]
-                csv_files = [f for f in self.files if f.endswith('.csv')]
-                
-                # Filter CSV files to only those with ground truth labels (T_DES_* columns)
-                # These have pattern like "traces_data_1000T_1.csv" not "traces_data_3des_*.csv"
-                csv_with_labels = [f for f in csv_files if 'traces_data_' in f and 'T_' in f and '3des' not in os.path.basename(f).lower()]
-                
-                # Check if NPZ files are too large (>500MB suggests consolidated trace_data array)
-                use_csv_due_to_size = False
+            npz_files = [f for f in self.files if f.endswith('.npz')]
+            csv_files = [f for f in self.files if f.endswith('.csv')]
+            
+            # Always prefer CSV if available, regardless of trace type
+            if csv_files:
+                # Optional: warn if there are large NPZ files being skipped
                 if npz_files:
                     total_npz_size = sum(os.path.getsize(f) for f in npz_files)
-                    if total_npz_size > 500 * 1024 * 1024:  # 500MB threshold
-                        logger.info(f"3DES NPZ files are large ({total_npz_size / (1024**3):.1f}GB). Using CSV files for better memory handling.")
-                        use_csv_due_to_size = True
-                
-                if use_csv_due_to_size and csv_with_labels:
-                    logger.info(f"Deduplication (3DES): Switching from NPZ to CSV due to memory constraints. Using {len(csv_with_labels)} CSV file(s) with ground truth labels")
-                    self.files = csv_with_labels
-                elif npz_files:
-                    csv_removed = len(csv_files)
-                    if csv_removed > 0:
-                        logger.info(f"Deduplication (3DES): Removed {csv_removed} CSV file(s) in favor of NPZ files")
-                    self.files = npz_files
-            
-            # For RSA, use CSV files if available (they contain more traces than NPZ)
-            elif self.trace_type == "rsa":
-                csv_files = [f for f in self.files if f.endswith('.csv')]
-                npz_files = [f for f in self.files if f.endswith('.npz')]
-                
-                if csv_files:
-                    # CSV files have compatible trace format and more data
-                    logger.info(f"RSA: Using {len(csv_files)} CSV file(s) instead of NPZ for better trace coverage")
-                    self.files = csv_files
+                    if total_npz_size > 500 * 1024 * 1024:  # 500MB
+                        logger.warning(f"CSV files preferred over large NPZ files ({total_npz_size / (1024**3):.1f}GB). To use NPZ instead, manually remove CSV files.")
+                    else:
+                        logger.info(f"Using {len(csv_files)} CSV file(s) instead of {len(npz_files)} NPZ file(s)")
+                self.files = csv_files
+            elif npz_files:
+                # Fallback: use NPZ if CSV not available
+                logger.info(f"CSV files not found. Using {len(npz_files)} NPZ file(s) as fallback.")
 
 
         if not self.files:
@@ -668,12 +648,13 @@ class TraceDataset:
             fpath_ext = os.path.splitext(fpath)[1].lower()
             is_csv_file = fpath_ext == ".csv"
             
+            full_traces = None
+            
             if os.path.isdir(fpath):
                 # Loose files in directory
                 trace_path = os.path.join(fpath, "trace_data.npy")
                 if not os.path.exists(trace_path): continue
                 full_traces = np.load(trace_path, mmap_mode='r')
-                data = None
             elif is_csv_file:
                 # Load CSV file
                 try:
@@ -709,8 +690,8 @@ class TraceDataset:
                                     padded = trace_vals[:max_len]
                                 else:
                                     padded = trace_vals
-                                normalized_traces.append(padded)
-                            full_traces = np.array(normalized_traces, dtype=np.float64)
+                                normalized_traces.append(padded.astype(np.float32))  # ← Convert to float32 to save 50% memory
+                            full_traces = np.array(normalized_traces, dtype=np.float32)  # ← Use float32, not float64
                         else:
                             logger.warning(f"No valid traces parsed from {os.path.basename(fpath)}")
                             continue
@@ -721,36 +702,45 @@ class TraceDataset:
                 except Exception as e:
                     logger.warning(f"Failed to load CSV {fpath}: {e}")
                     continue
-                data = None
             else:
-                # Load NPZ file with memory mapping to handle large files
-                data = np.load(fpath, mmap_mode='r', allow_pickle=True)
-                if 'trace_data' not in data: continue
-                # Keep as memory-mapped, don't load into RAM
-                full_traces = data['trace_data']
+                # Load NPZ file with memory mapping - keep file open to avoid re-allocation
+                # The key is NOT to materialize the full array at once
+                try:
+                    # Load with mmap to get lazy access
+                    data_npz = np.load(fpath, mmap_mode='r', allow_pickle=False)
+                    if 'trace_data' not in data_npz:
+                        logger.warning(f"No trace_data in {fpath}")
+                        continue
+                    
+                    # Get shape without materializing entire array
+                    trace_array_mmap = data_npz['trace_data']
+                    n = trace_array_mmap.shape[0]
+                    logger.info(f"[MEMORY] Loaded NPZ with mmap: {os.path.basename(fpath)} ({n} traces, {trace_array_mmap.shape[1]} samples)")
+                    
+                    # Read in batches by slicing the mmap (only loads batch into memory)
+                    for batch_idx in range(0, n, batch_size):
+                        end_idx = min(batch_idx + batch_size, n)
+                        try:
+                            # Slice the memmap - this only loads the batch data
+                            batch_traces = np.array(trace_array_mmap[batch_idx:end_idx], dtype=np.float32)
+                            meta_subset = self.metadata[self.metadata['trace_file'] == fpath].iloc[batch_idx:end_idx]
+                            yield batch_traces, meta_subset
+                        except MemoryError as e:
+                            logger.warning(f"MemoryError on batch {batch_idx}:{end_idx}, skipping: {e}")
+                            continue
+                except Exception as e:
+                    logger.error(f"Failed to read NPZ {fpath}: {e}")
+                    continue
+                continue  # Skip the batch yielding below for NPZ files (already yielded above)
             
-            n = full_traces.shape[0]
-            
-            # Find command indices if target_apdu is specified
-            apdu_indices = None
-            if target_apdu and data is not None:
-                for key in ['Verify_command', 'ACR_send', 'apdu']:
-                    if key in data:
-                        cmds = data[key]
-                        # Find index where target_apdu appears in the sequence
-                        # This assumes trace_data is concatenated power for all cmds?
-                        # Or if trace_data is (N, samples), does samples cover ALL cmds?
-                        # Based on audit, samples=131k covers multiple cmds.
-                        pass
-            
-            for i in range(0, n, batch_size):
-                # Extract batch slice from memory-mapped array (loads only this batch)
-                end_idx = min(i + batch_size, n)
-                batch_traces = np.array(full_traces[i:end_idx], copy=True)  # Copy to ensure contiguity
-                
-                # We yield the meta as well
-                meta_subset = self.metadata[self.metadata['trace_file'] == fpath].iloc[i:end_idx]
-                yield batch_traces, meta_subset
+            # For CSV and directory files, yield in batches
+            if full_traces is not None:
+                n = len(full_traces)
+                for batch_idx in range(0, n, batch_size):
+                    end_idx = min(batch_idx + batch_size, n)
+                    batch_traces = full_traces[batch_idx:end_idx].astype(np.float32)
+                    meta_subset = self.metadata[self.metadata['trace_file'] == fpath].iloc[batch_idx:end_idx]
+                    yield batch_traces, meta_subset
 
 if __name__ == "__main__":
     ds = TraceDataset("Input")

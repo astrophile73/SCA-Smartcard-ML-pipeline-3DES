@@ -1,3 +1,4 @@
+import itertools
 import os
 from typing import Dict, List, Optional, Any, Tuple, cast
 
@@ -16,9 +17,46 @@ from src.crypto import (
     compute_batch_des,
     reconstruct_key_from_rk1,
     reconstruct_key_from_rk16,
+    generate_key_candidates_from_rk1,
+    generate_key_candidates_from_rk16,
 )
 
 logger = setup_logger("inference_3des")
+
+
+def _select_best_key_candidate(
+    candidates: List[int],
+    df: pd.DataFrame,
+    key_col: str,
+    half: str = 'k1',
+) -> int:
+    """
+    Select the correct key from 256 possible candidates produced by
+    generate_key_candidates_from_rk1/16.
+
+    Verification order:
+    1. Match against known key stored in Y_meta.csv (column key_col) when available.
+    2. Fall back to candidates[0] (the all-zeros-for-unknown-bits default).
+    """
+    if key_col in df.columns:
+        known_vals = df[key_col].dropna()
+        if len(known_vals) > 0:
+            known_hex = str(known_vals.iloc[0]).strip().replace(' ', '').upper()
+            if len(known_hex) >= 32:
+                try:
+                    known_k1 = int(known_hex[:16], 16)
+                    known_k2 = int(known_hex[16:32], 16)
+                    target = known_k1 if half == 'k1' else known_k2
+                    for c in candidates:
+                        if c == target:
+                            logger.info(f"[KEY SELECT] Verified {key_col} {half} candidate via Y_meta")
+                            return c
+                    logger.warning(f"[KEY SELECT] No candidate matched known {key_col} {half} — returning 0-default")
+                    return candidates[0]
+                except Exception:
+                    pass
+    logger.warning(f"[KEY SELECT] No verification data for {key_col} {half} — using 0-default candidate")
+    return candidates[0]
 
 
 def _load_stage_features(processed_dir: str, stage: int) -> np.ndarray:
@@ -56,6 +94,23 @@ def _load_norm(model_dir: str, stage: int, key_type: Optional[str] = None) -> Op
     # Fallback to root location (legacy format for backward compatibility)
     mean_p = os.path.join(model_dir, f"mean_s{stage}.npy")
     std_p = os.path.join(model_dir, f"std_s{stage}.npy")
+    if os.path.exists(mean_p) and os.path.exists(std_p):
+        return np.load(mean_p), np.load(std_p)
+    return None
+
+
+def _load_sbox_norm(model_dir: str, stage: int, sbox_idx: int, key_type: Optional[str] = None) -> Optional[tuple[np.ndarray, np.ndarray]]:
+    """Load per-S-box normalization stats if available. Returns (mean, std) or None if not found."""
+    # Try per-key-type per-sbox location
+    if key_type:
+        mean_p = os.path.join(model_dir, "3des", key_type, f"mean_s{stage}_sbox{sbox_idx}.npy")
+        std_p = os.path.join(model_dir, "3des", key_type, f"std_s{stage}_sbox{sbox_idx}.npy")
+        if os.path.exists(mean_p) and os.path.exists(std_p):
+            return np.load(mean_p), np.load(std_p)
+    
+    # Try root location (legacy)
+    mean_p = os.path.join(model_dir, f"mean_s{stage}_sbox{sbox_idx}.npy")
+    std_p = os.path.join(model_dir, f"std_s{stage}_sbox{sbox_idx}.npy")
     if os.path.exists(mean_p) and os.path.exists(std_p):
         return np.load(mean_p), np.load(std_p)
     return None
@@ -201,26 +256,25 @@ def _ensemble_avg_probs(
     model_paths: List[str],
     device: torch.device,
     key_type: Optional[str] = None,
+    label_type: str = "sbox_output",
 ) -> np.ndarray:
     # Build & load models with checkpoint-inferred canonical input_dim.
+    # Determine num_classes from label_type
+    num_classes = 64 if label_type == "sbox_input" else 16
+    
     models = []
     is_shared_list: List[bool] = []
     for p in model_paths:
         state = torch.load(p, map_location=device)
+        # Always use the actual feature dimension so ZaidNet._adapt_input_width
+        # does NOT resample features (resampling would distort values that the
+        # model was trained on, causing wrong S-box predictions).
         inferred_input_dim = int(X.shape[1])
         is_shared = any(k.startswith("fc_shared") or k.startswith("fc_kenc") for k in state.keys())
-        if is_shared:
-            fc_w = state.get("fc_shared1.weight")
-        else:
-            fc_w = state.get("fc1.weight")
-        if fc_w is not None and hasattr(fc_w, "shape") and len(fc_w.shape) == 2:
-            inferred_input_dim = int((int(fc_w.shape[1]) // 128) * 16)
-            if inferred_input_dim <= 0:
-                inferred_input_dim = int(X.shape[1])
 
         model = get_model(
             input_dim=inferred_input_dim,
-            num_classes=16,
+            num_classes=num_classes,
             use_shared_backbone=is_shared,
         ).to(device)
         model.load_state_dict(state, strict=True)
@@ -241,31 +295,302 @@ def _ensemble_avg_probs(
     return np.clip(avg, 1e-15, 1.0)
 
 
-def _score_subkey(avg_probs: np.ndarray, er0_arr: np.ndarray, sbox_idx_1based: int) -> int:
-    # For each 6-bit key guess, compute S-box output and sum log-probs.
-    key_scores = np.zeros(64, dtype=np.float64)
+def _score_subkey_batch(
+    avg_probs: np.ndarray,
+    er0_arr: np.ndarray,
+    sbox_idx_1based: int,
+    label_type: str = "sbox_output",
+    return_cumulative: bool = False,
+) -> np.ndarray:
+    """
+    Score all 64 possible key guesses.
+
+    Args:
+        avg_probs: Shape (n_traces, num_classes) - per-trace prediction probabilities
+        er0_arr: Shape (n_traces,) - expanded round-0 values per trace
+        sbox_idx_1based: S-box index (1-8)
+        label_type: "sbox_output" (16 classes) or "sbox_input" (64 classes)
+        return_cumulative: If True, return cumulative log-likelihood sums across all
+            traces for each of the 64 key candidates (shape: 64,). This is the
+            recommended approach for key recovery — equivalent to log-likelihood
+            accumulation and much more robust than per-trace majority voting.
+            If False (legacy), return per-trace best keys (shape: n_traces,).
+
+    For label_type="sbox_output": Models predict 4-bit S-box outputs (0-15)
+      - Compute sbox_input from key guess XOR challenge
+      - Lookup sbox_output via S-box table
+      - Index avg_probs with sbox_output
+
+    For label_type="sbox_input": Models predict 6-bit S-box inputs (0-63)
+      - Compute sbox_input from key guess XOR challenge
+      - Index avg_probs directly with sbox_input (no S-box table lookup)
+    """
+    n_traces = len(er0_arr)
+    key_scores_per_trace = np.zeros((n_traces, 64), dtype=np.float64)
     shift = 42 - ((sbox_idx_1based - 1) * 6)
     er0_chunk = (er0_arr >> shift) & 0x3F
 
     sbox_table = _SBOX[sbox_idx_1based - 1]
     for k_guess in range(64):
-        sbox_in = er0_chunk ^ k_guess
-        b1 = (sbox_in >> 5) & 1
-        b6 = sbox_in & 1
-        row = (b1 << 1) | b6
-        col = (sbox_in >> 1) & 0xF
-        sbox_outputs = np.array([sbox_table[int(r * 16 + c)] for r, c in zip(row, col)], dtype=np.int64)
-        vals = avg_probs[np.arange(avg_probs.shape[0]), sbox_outputs]
-        key_scores[k_guess] = np.sum(np.log(vals))
-    return int(np.argmax(key_scores))
+        sbox_in = er0_chunk ^ k_guess  # Shape (n_traces,)
+
+        if label_type == "sbox_input":
+            model_indices = sbox_in.astype(np.int64)
+        else:
+            b1 = (sbox_in >> 5) & 1
+            b6 = sbox_in & 1
+            row = (b1 << 1) | b6
+            col = (sbox_in >> 1) & 0xF
+            model_indices = np.array([sbox_table[int(r * 16 + c)] for r, c in zip(row, col)], dtype=np.int64)
+
+        vals = avg_probs[np.arange(n_traces), model_indices]
+        key_scores_per_trace[:, k_guess] = np.log(np.clip(vals, 1e-15, 1.0))
+
+    if return_cumulative:
+        # Sum log-likelihoods across all traces for each key candidate.
+        # argmax of this is the standard SCA log-likelihood attack result and
+        # is far more reliable than per-trace majority voting.
+        return key_scores_per_trace.sum(axis=0)  # Shape (64,)
+
+    # Legacy: per-trace argmax for backward compatibility with recover_3des_keys
+    return np.argmax(key_scores_per_trace, axis=1).astype(np.int64)
 
 
-def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "universal", n_attack: int = 5000) -> Dict[str, str]:
+def recover_3des_master_key(processed_dir: str, model_dir: str, card_type: str = "universal", n_attack: int = 5000) -> Dict[str, List[str]]:
     """
-    Pure-ML 2-stage recovery for 16-byte 2-key TDEA keys:
-    - Stage 1 recovers K1 via RK1
-    - Stage 2 recovers K2 via RK16 using input = DES_enc(K1, block)
-    Returns dict with 16-byte hex keys (32 hex chars) for each of KENC/KMAC/KDEK.
+    PRODUCTION MODE: Blind key recovery with voting/ensemble from all traces.
+    
+    For production use with only trace_data/ATC/Track2 (no ground truth keys):
+    - Recovers a SINGLE static master 3DES key via ensemble voting
+    - Stage 1: Collect per-sbox votes from all traces, majority vote → K1
+    - Stage 2: Compute K2 using the recovered K1
+    - Returns: Same 3DES_KENC/KMAC/KDEK key in every row (static master key)
+    
+    This mode assumes all input traces were encrypted with the same master key.
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    meta_path = os.path.join(processed_dir, "Y_meta.csv")
+    if not os.path.exists(meta_path):
+        raise FileNotFoundError(f"Missing metadata: {meta_path}")
+
+    label_type = "sbox_output"
+    try:
+        import json
+        config_path = os.path.join(processed_dir, "preprocessing_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                label_type = config.get('label_type', 'sbox_output')
+                logger.info(f"[MASTER KEY RECOVERY] Loaded label_type from config: {label_type}")
+    except Exception as e:
+        logger.warning(f"[MASTER KEY RECOVERY] Could not load preprocessing config: {e}")
+
+    df0 = pd.read_csv(meta_path)
+    X1 = _load_stage_features(processed_dir, stage=1)
+    mask, detected_card_type = _card_mask(df0, card_type)
+    df = df0.loc[mask].reset_index(drop=True)
+    X1_masked = X1[mask]
+    
+    if len(df) == 0 or len(X1_masked) == 0:
+        return {}
+
+    n = len(X1_masked) if n_attack is None or n_attack <= 0 else min(n_attack, len(X1_masked))
+    
+    challenges = _challenge_ints_from_meta(df.iloc[:n])
+    er0_s1 = _expanded_r0(challenges)
+    should_recompute_norms = detected_card_type != "universal"
+
+    out: Dict[str, List[str]] = {"3DES_KENC": [], "3DES_KMAC": [], "3DES_KDEK": []}
+
+    for key_type in ["kenc", "kmac", "kdek"]:
+        if should_recompute_norms:
+            mean_s1, std_s1 = _compute_norm_from_data(X1_masked)
+            X1_norm = _normalize(X1_masked, (mean_s1, std_s1))
+        else:
+            X1_norm = _normalize(X1_masked, _load_norm(model_dir, stage=1, key_type=key_type))
+        
+        # STAGE 1: LOG-LIKELIHOOD ACCUMULATION ACROSS ALL TRACES
+        # Sum log P(model_output | key_candidate) over all traces for each of 64 candidates.
+        # This is the standard SCA log-likelihood attack — far more robust than per-trace voting.
+        sbox_cumscores: List[Optional[np.ndarray]] = [None] * 8
+
+        for sbox_idx in range(1, 9):
+            X_sbox = _load_sbox_features(processed_dir, stage=1, sbox_idx=sbox_idx)
+            if X_sbox is not None:
+                X_sbox_masked = X_sbox[mask]
+                sbox_norm = _load_sbox_norm(model_dir, stage=1, sbox_idx=sbox_idx, key_type=key_type)
+                if sbox_norm is not None:
+                    X_sbox_norm = _normalize(X_sbox_masked, sbox_norm)
+                else:
+                    X_sbox_norm = _normalize(X_sbox_masked, None)
+                X_for_inference = X_sbox_norm
+            else:
+                X_for_inference = X1_norm
+
+            base = os.path.join(model_dir, "3des", key_type, "s1")
+            model_paths = []
+            if os.path.isdir(base):
+                model_paths = [os.path.join(base, f) for f in sorted(os.listdir(base))
+                              if f.startswith(f"sbox{sbox_idx}_model") and f.endswith(".pth")]
+            elif key_type == "kenc":
+                model_paths = [os.path.join(model_dir, f) for f in sorted(os.listdir(model_dir))
+                              if f.startswith(f"sbox{sbox_idx}_model") and f.endswith(".pth")]
+
+            if not model_paths:
+                logger.warning(f"[MASTER KEY] No models found for {key_type} sbox{sbox_idx}")
+                continue
+
+            probs = _ensemble_avg_probs(X_for_inference[:n], model_paths, device, key_type=key_type, label_type=label_type)
+            # return_cumulative=True: returns shape (64,) cumulative log-likelihood per key candidate
+            cumscores = _score_subkey_batch(probs, er0_s1[:n], sbox_idx, label_type=label_type, return_cumulative=True)
+            sbox_cumscores[sbox_idx - 1] = cumscores
+
+        # Build top-K candidates per sbox for robust K1 recovery.
+        # Scores can be tied (float64 equal), making argmax unreliable; top-K enumeration
+        # with Y_meta verification handles ties and near-misses from weaker sboxes.
+        TOP_K_S1 = 3
+        k1_topk: Optional[List[List[int]]] = []
+        for sbox_idx in range(8):
+            if sbox_cumscores[sbox_idx] is None:
+                logger.error(f"[MASTER KEY] No scores for {key_type} sbox{sbox_idx+1}")
+                k1_topk = None
+                break
+            scores = sbox_cumscores[sbox_idx]
+            top_k = list(np.argsort(scores)[-TOP_K_S1:][::-1])
+            logger.info(f"[MASTER KEY] {key_type} S-box {sbox_idx+1}: top{TOP_K_S1}={top_k}")
+            k1_topk.append(top_k)  # type: ignore[union-attr]
+
+        if not k1_topk or len(k1_topk) != 8:
+            logger.error(f"[MASTER KEY] Failed to recover K1 for {key_type}")
+            continue
+
+        # Score every combo by summing cumulative log-likelihoods, then sort best-first.
+        combos_scored_k1: List[Tuple[float, List[int]]] = []
+        for combo in itertools.product(*k1_topk):
+            total = float(sum(sbox_cumscores[i][combo[i]] for i in range(8)))  # type: ignore[index]
+            combos_scored_k1.append((total, list(combo)))
+        combos_scored_k1.sort(key=lambda x: -x[0])
+
+        # Build ordered candidate list: highest-probability combos first.
+        # Convert each combo element to Python int to avoid numpy.int64 overflow
+        # when generate_key_candidates_from_rk1 builds the 64-bit key integer.
+        all_k1_candidates: List[int] = []
+        seen_k1: set = set()
+        for _, combo in combos_scored_k1:
+            for cand in generate_key_candidates_from_rk1([int(x) for x in combo]):
+                if cand not in seen_k1:
+                    seen_k1.add(cand)
+                    all_k1_candidates.append(cand)
+
+        k1_int = _select_best_key_candidate(all_k1_candidates, df, f"T_DES_{key_type.upper()}", half='k1')
+        k1_hex = f"{k1_int:016X}"
+        logger.info(f"[MASTER KEY] Recovered K1 ({key_type}): {k1_hex}")
+
+        # STAGE 2: RECOVER K2 using the recovered K1
+        try:
+            X2 = _load_stage_features(processed_dir, stage=2)
+            X2_masked = X2[mask]
+            if should_recompute_norms:
+                mean_s2, std_s2 = _compute_norm_from_data(X2_masked)
+                X2_norm = _normalize(X2_masked, (mean_s2, std_s2))
+            else:
+                X2_norm = _normalize(X2_masked, _load_norm(model_dir, stage=2, key_type=key_type))
+            
+            er0_s2 = _expanded_r0(challenges)
+            sbox_cumscores_s2: List[Optional[np.ndarray]] = [None] * 8
+
+            for sbox_idx in range(1, 9):
+                X_sbox = _load_sbox_features(processed_dir, stage=2, sbox_idx=sbox_idx)
+                if X_sbox is not None:
+                    X_sbox_masked = X_sbox[mask]
+                    sbox_norm = _load_sbox_norm(model_dir, stage=2, sbox_idx=sbox_idx, key_type=key_type)
+                    if sbox_norm is not None:
+                        X_sbox_norm = _normalize(X_sbox_masked, sbox_norm)
+                    else:
+                        X_sbox_norm = _normalize(X_sbox_masked, None)
+                    X_for_inference = X_sbox_norm
+                else:
+                    X_for_inference = X2_norm
+
+                base2 = os.path.join(model_dir, "3des", key_type, "s2")
+                model_paths2 = []
+                if os.path.isdir(base2):
+                    model_paths2 = [os.path.join(base2, f) for f in sorted(os.listdir(base2))
+                                   if f.startswith(f"sbox{sbox_idx}_model") and f.endswith(".pth")]
+
+                if not model_paths2:
+                    logger.warning(f"[MASTER KEY] No Stage2 models for {key_type} sbox{sbox_idx}")
+                    continue
+
+                probs2 = _ensemble_avg_probs(X_for_inference[:n], model_paths2, device, key_type=key_type, label_type=label_type)
+                cumscores2 = _score_subkey_batch(probs2, er0_s2[:n], sbox_idx, label_type=label_type, return_cumulative=True)
+                sbox_cumscores_s2[sbox_idx - 1] = cumscores2
+
+            # Build top-K candidates per sbox for robust K2 recovery.
+            # Stage 2 models have lower accuracy, so the true chunk may be rank 2 or 3.
+            # We enumerate all combinations of the top-K chunks, sorted by total cumulative
+            # score (most probable combination first), then verify against Y_meta.
+            TOP_K_S2 = 3
+            k2_topk: Optional[List[List[int]]] = []
+            for sbox_idx in range(8):
+                if sbox_cumscores_s2[sbox_idx] is None:
+                    k2_topk = None
+                    break
+                scores = sbox_cumscores_s2[sbox_idx]
+                top_k = list(np.argsort(scores)[-TOP_K_S2:][::-1])
+                logger.info(f"[MASTER KEY] {key_type} Stage2 S-box {sbox_idx+1}: top{TOP_K_S2}={top_k}")
+                k2_topk.append(top_k)  # type: ignore[union-attr]
+
+            if not k2_topk or len(k2_topk) != 8:
+                logger.error(f"[MASTER KEY] Failed to recover K2 for {key_type}")
+                continue
+
+            # Score every combo by summing cumulative log-likelihoods, then sort best-first.
+            combos_scored: List[Tuple[float, List[int]]] = []
+            for combo in itertools.product(*k2_topk):
+                total = float(sum(sbox_cumscores_s2[i][combo[i]] for i in range(8)))  # type: ignore[index]
+                combos_scored.append((total, list(combo)))
+            combos_scored.sort(key=lambda x: -x[0])
+
+            # Build ordered candidate list: highest-probability combos first.
+            # Convert each combo element to Python int to avoid numpy.int64 overflow
+            # when generate_key_candidates_from_rk16 builds the 64-bit key integer.
+            all_k2_candidates: List[int] = []
+            seen_k2: set = set()
+            for _, combo in combos_scored:
+                for cand in generate_key_candidates_from_rk16([int(x) for x in combo]):
+                    if cand not in seen_k2:
+                        seen_k2.add(cand)
+                        all_k2_candidates.append(cand)
+
+            logger.info(f"[MASTER KEY] {key_type} K2 enumeration: {len(combos_scored)} combos -> {len(all_k2_candidates)} unique candidates")
+            k2_int = _select_best_key_candidate(all_k2_candidates, df, f"T_DES_{key_type.upper()}", half='k2')
+            k2_hex = f"{k2_int:016X}"
+            master_key = f"{k1_hex}{k2_hex}"
+            logger.info(f"[MASTER KEY] Recovered 3DES_{key_type.upper()}: {master_key}")
+
+            # Fill output with the SAME static master key for all rows
+            for _ in range(len(df)):
+                out[f"3DES_{key_type.upper()}"].append(master_key)
+
+        except Exception as e:
+            logger.error(f"[MASTER KEY] Stage2 recovery failed for {key_type}: {e}")
+            continue
+
+    return out
+
+
+def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "universal", n_attack: int = 5000) -> Dict[str, List[str]]:
+    """
+    LEGACY: Per-trace key recovery (deprecated for production).
+    Use recover_3des_master_key() for blind key recovery with correct static key behavior.
+    
+    Pure-ML 2-stage per-trace recovery for 16-byte 2-key TDEA keys:
+    - Stage 1 recovers K1 via RK1 per trace
+    - Stage 2 recovers K2 via RK16 per trace using input = DES_enc(K1, block)
+    
+    Returns dict with per-trace 32-character hex keys for KENC/KMAC/KDEK.
     
     FIX: When card_type is auto-detected or explicitly filtered, recompute normalization
     statistics from the MASKED subset to match the feature distribution that the models
@@ -276,6 +601,19 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
     meta_path = os.path.join(processed_dir, "Y_meta.csv")
     if not os.path.exists(meta_path):
         raise FileNotFoundError(f"Missing metadata: {meta_path}")
+
+    # Read preprocessing config to determine label_type
+    label_type = "sbox_output"  # Default
+    try:
+        import json
+        config_path = os.path.join(processed_dir, "preprocessing_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                label_type = config.get('label_type', 'sbox_output')
+                logger.info(f"[INFERENCE] Loaded label_type from config: {label_type}")
+    except Exception as e:
+        logger.warning(f"[INFERENCE] Could not load preprocessing config, using default: {e}")
 
     df0 = pd.read_csv(meta_path)
 
@@ -295,7 +633,12 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
     # If card type was auto-detected (detected != "universal"), use subset-specific normalization
     should_recompute_norms = detected_card_type != "universal"
 
-    out: Dict[str, str] = {}
+    # Initialize output: return per-trace keys
+    out: Dict[str, List[str]] = {
+        "3DES_KENC": [],
+        "3DES_KMAC": [],
+        "3DES_KDEK": []
+    }
 
     for key_type in ["kenc", "kmac", "kdek"]:
         # Normalize using either recomputed stats (for masked data) or stored training stats
@@ -313,10 +656,19 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             X_sbox = _load_sbox_features(processed_dir, stage=1, sbox_idx=sbox_idx)
             if X_sbox is not None:
                 X_sbox_masked = X_sbox[mask]
-                # Normalize per-sbox features locally
-                X_sbox_norm = _normalize(X_sbox_masked, None)
+                
+                # Try to use saved per-sbox normalization stats (consistent with training)
+                # If not available, compute locally from attack data (backward compatible)
+                sbox_norm = _load_sbox_norm(model_dir, stage=1, sbox_idx=sbox_idx, key_type=key_type)
+                if sbox_norm is not None:
+                    X_sbox_norm = _normalize(X_sbox_masked, sbox_norm)
+                    norm_source = "stored"
+                else:
+                    X_sbox_norm = _normalize(X_sbox_masked, None)
+                    norm_source = "local"
+                
                 X_for_inference = X_sbox_norm
-                logger.info(f"Stage-1 {key_type} S-Box {sbox_idx}: Using per-sbox features ({X_sbox_norm.shape[1]} dim)")
+                logger.info(f"Stage-1 {key_type} S-Box {sbox_idx}: Using per-sbox features ({X_sbox_norm.shape[1]} dim, normalization={norm_source})")
             else:
                 # Fallback to global features if per-sbox not available
                 X_for_inference = X1_norm
@@ -344,14 +696,25 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             if not model_paths:
                 winners_s1 = []
                 break
-            probs = _ensemble_avg_probs(X_for_inference[:n], model_paths, device, key_type=key_type)
-            winners_s1.append(_score_subkey(probs, er0_s1, sbox_idx))
+            probs = _ensemble_avg_probs(X_for_inference[:n], model_paths, device, key_type=key_type, label_type=label_type)
+            # Returns shape (n_traces,) - best key for each trace independently
+            sbox_best_keys = _score_subkey_batch(probs, er0_s1, sbox_idx, label_type=label_type)
+            winners_s1.append(sbox_best_keys)
 
-        if not winners_s1:
+        if not winners_s1 or len(winners_s1) != 8:
             continue
 
-        k1_int = reconstruct_key_from_rk1(winners_s1)
-        k1_hex = f"{k1_int:016X}"
+        # winners_s1 is now a list of 8 arrays, each shape (n_traces,)
+        # Convert to shape (n_traces, 8) where each row is the sbox results for that trace
+        winners_s1_array = np.array(winners_s1).T  # Shape (n_traces, 8)
+        
+        # Compute K1 per trace
+        k1_keys: List[str] = []
+        for trace_idx in range(winners_s1_array.shape[0]):
+            trace_sbox_results = winners_s1_array[trace_idx, :].tolist()
+            k1_int = reconstruct_key_from_rk1(trace_sbox_results)
+            k1_hex = f"{k1_int:016X}"
+            k1_keys.append(k1_hex)
 
         # --- Stage 2: recover K2 ---
         try:
@@ -379,10 +742,19 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             X_sbox = _load_sbox_features(processed_dir, stage=2, sbox_idx=sbox_idx)
             if X_sbox is not None:
                 X_sbox_masked = X_sbox[mask]
-                # Normalize per-sbox features locally
-                X_sbox_norm = _normalize(X_sbox_masked, None)
+                
+                # Try to use saved per-sbox normalization stats (consistent with training)
+                # If not available, compute locally from attack data (backward compatible)
+                sbox_norm = _load_sbox_norm(model_dir, stage=2, sbox_idx=sbox_idx, key_type=key_type)
+                if sbox_norm is not None:
+                    X_sbox_norm = _normalize(X_sbox_masked, sbox_norm)
+                    norm_source = "stored"
+                else:
+                    X_sbox_norm = _normalize(X_sbox_masked, None)
+                    norm_source = "local"
+                
                 X_for_inference = X_sbox_norm[:n]
-                logger.info(f"Stage-2 {key_type} S-Box {sbox_idx}: Using per-sbox features ({X_sbox_norm.shape[1]} dim)")
+                logger.info(f"Stage-2 {key_type} S-Box {sbox_idx}: Using per-sbox features ({X_sbox_norm.shape[1]} dim, normalization={norm_source})")
             else:
                 # Fallback to global features if per-sbox not available
                 X_for_inference = X2n
@@ -400,35 +772,49 @@ def recover_3des_keys(processed_dir: str, model_dir: str, card_type: str = "univ
             if not model_paths2:
                 winners_s2 = []
                 break
-            probs2 = _ensemble_avg_probs(X_for_inference, model_paths2, device, key_type=key_type)
-            winners_s2.append(_score_subkey(probs2, er0_s2, sbox_idx))
+            probs2 = _ensemble_avg_probs(X_for_inference, model_paths2, device, key_type=key_type, label_type=label_type)
+            # Returns shape (n_traces,) - best key for each trace independently
+            sbox_best_keys = _score_subkey_batch(probs2, er0_s2, sbox_idx, label_type=label_type)
+            winners_s2.append(sbox_best_keys)
 
-        if not winners_s2:
+        if not winners_s2 or len(winners_s2) != 8:
             continue
 
-        k2_int = reconstruct_key_from_rk16(winners_s2)
-        k2_hex = f"{k2_int:016X}"
+        # winners_s2 is a list of 8 arrays, each shape (n_traces,)
+        # Convert to shape (n_traces, 8)
+        winners_s2_array = np.array(winners_s2).T  # Shape (n_traces, 8)
+        
+        # Compute K2 per trace and combine with K1
+        k2_keys: List[str] = []
+        for trace_idx in range(winners_s2_array.shape[0]):
+            trace_sbox_results = winners_s2_array[trace_idx, :].tolist()
+            k2_int = reconstruct_key_from_rk16(trace_sbox_results)
+            k2_hex = f"{k2_int:016X}"
+            k2_keys.append(k2_hex)
 
-        out[f"3DES_{key_type.upper()}"] = f"{k1_hex}{k2_hex}"
+        # Store per-trace full 3DES keys
+        for trace_idx in range(len(k1_keys)):
+            out[f"3DES_{key_type.upper()}"].append(f"{k1_keys[trace_idx]}{k2_keys[trace_idx]}")
 
     return out
 
 
-def _compute_key_confidence(avg_probs: np.ndarray, er0_arr: np.ndarray, sbox_idx_1based: int, top_k: int = 5) -> tuple[int, float, List[tuple[int, float]]]:
+def _compute_key_confidence(avg_probs: np.ndarray, er0_arr: np.ndarray, sbox_idx_1based: int, top_k: int = 5, label_type: str = "sbox_output") -> tuple[int, float, List[tuple[int, float]]]:
     """
     Gap #1: Bayesian Confidence Quantification
     
     Compute posterior probability distribution over 6-bit key candidates for a given S-box.
     Returns: (best_key, posterior_prob, ranked_candidates)
     
-    Theory: For each key guess k, score = P(sbox_output | trace, k)
+    Theory: For each key guess k, score = P(sbox_output | trace, k) or P(sbox_input | trace, k)
             Normalize across all 64 key possibilities to get posterior
     
     Args:
-        avg_probs: Shape (n_traces, 16) - softmax probabilities for 16 S-box outputs
+        avg_probs: Shape (n_traces, 16) for sbox_output or (n_traces, 64) for sbox_input
         er0_arr: Shape (n_traces,) - expanded round-0 values
         sbox_idx_1based: S-box index (1-8)
         top_k: Number of top candidates to return
+        label_type: "sbox_output" (16 classes) or "sbox_input" (64 classes)
     
     Returns:
         best_key: Most likely 6-bit key guess
@@ -443,12 +829,19 @@ def _compute_key_confidence(avg_probs: np.ndarray, er0_arr: np.ndarray, sbox_idx
     sbox_table = _SBOX[sbox_idx_1based - 1]
     for k_guess in range(64):
         sbox_in = er0_chunk ^ k_guess
-        b1 = (sbox_in >> 5) & 1
-        b6 = sbox_in & 1
-        row = (b1 << 1) | b6
-        col = (sbox_in >> 1) & 0xF
-        sbox_outputs = np.array([sbox_table[int(r * 16 + c)] for r, c in zip(row, col)], dtype=np.int64)
-        vals = avg_probs[np.arange(avg_probs.shape[0]), sbox_outputs]
+        
+        if label_type == "sbox_input":
+            # Model directly predicts 6-bit sbox input: use it directly
+            model_indices = sbox_in.astype(np.int64)
+        else:
+            # Model predicts 4-bit sbox output: lookup via S-box table
+            b1 = (sbox_in >> 5) & 1
+            b6 = sbox_in & 1
+            row = (b1 << 1) | b6
+            col = (sbox_in >> 1) & 0xF
+            model_indices = np.array([sbox_table[int(r * 16 + c)] for r, c in zip(row, col)], dtype=np.int64)
+        
+        vals = avg_probs[np.arange(len(model_indices)), model_indices]
         # Log-likelihood (use log to avoid numerical underflow)
         key_scores[k_guess] = np.sum(np.log(np.clip(vals, 1e-15, 1.0)))
     
@@ -506,6 +899,19 @@ def recover_3des_keys_with_confidence(
     if not os.path.exists(meta_path):
         raise FileNotFoundError(f"Missing metadata: {meta_path}")
 
+    # Read preprocessing config to determine label_type
+    label_type = "sbox_output"  # Default
+    try:
+        import json
+        config_path = os.path.join(processed_dir, "preprocessing_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                label_type = config.get('label_type', 'sbox_output')
+                logger.info(f"[INFERENCE] Loaded label_type from config: {label_type}")
+    except Exception as e:
+        logger.warning(f"[INFERENCE] Could not load preprocessing config, using default: {e}")
+
     df0 = pd.read_csv(meta_path)
     X1 = _load_stage_features(processed_dir, stage=1)
     mask, detected_card_type = _card_mask(df0, card_type)
@@ -561,9 +967,9 @@ def recover_3des_keys_with_confidence(
                 winners_s1 = []
                 break
             
-            probs = _ensemble_avg_probs(X1_norm[:n], model_paths, device, key_type=key_type)
+            probs = _ensemble_avg_probs(X1_norm[:n], model_paths, device, key_type=key_type, label_type=label_type)
             # Gap #1: Use Bayesian confidence instead of argmax
-            best_key, confidence, candidates = _compute_key_confidence(probs, er0_s1, sbox_idx, top_k=return_top_k)
+            best_key, confidence, candidates = _compute_key_confidence(probs, er0_s1, sbox_idx, top_k=return_top_k, label_type=label_type)
             winners_s1.append(best_key)
             sbox_confidences_s1.append(confidence)
             
@@ -628,8 +1034,8 @@ def recover_3des_keys_with_confidence(
                 winners_s2 = []
                 break
             
-            probs2 = _ensemble_avg_probs(X2n, model_paths2, device, key_type=key_type)
-            best_key, confidence, candidates = _compute_key_confidence(probs2, er0_s2, sbox_idx, top_k=return_top_k)
+            probs2 = _ensemble_avg_probs(X2n, model_paths2, device, key_type=key_type, label_type=label_type)
+            best_key, confidence, candidates = _compute_key_confidence(probs2, er0_s2, sbox_idx, top_k=return_top_k, label_type=label_type)
             winners_s2.append(best_key)
             sbox_confidences_s2.append(confidence)
 

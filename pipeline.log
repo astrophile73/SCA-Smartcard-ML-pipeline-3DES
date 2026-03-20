@@ -1725,3 +1725,958 @@ Done. Processed 1 traces.
 2026-03-16 15:46:48,226 - main - INFO - Recovered 3DES keys (pure ML): ['3DES_KENC', '3DES_KMAC', '3DES_KDEK']
 2026-03-16 15:46:48,226 - main - INFO - [STEP 5] Generating Reports (CSV/XLSX)...
 2026-03-16 15:46:48,431 - main - INFO - Pipeline Complete. Generated 3DES-only report with 2 rows
+2026-03-19 11:46:50,607 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 11:46:50,657 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 11:46:50,738 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 11:46:50,829 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 11:46:50,891 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 11:46:50,978 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,046 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,114 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,177 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,231 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 11:46:51,271 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,350 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,407 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,481 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,552 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,627 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,683 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,754 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,818 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 11:46:51,840 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,906 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 11:46:51,981 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,043 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,122 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,183 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,253 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,325 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,384 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 11:46:52,419 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,497 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,570 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,627 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,696 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,763 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,828 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,884 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 11:46:52,939 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 11:46:52,971 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,048 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,134 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,196 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,273 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,328 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,403 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,468 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,530 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 11:46:53,556 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,627 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,682 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,759 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,827 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,891 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 11:46:53,953 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 11:46:54,028 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 12:26:28,870 - ingest - INFO - Filtering for card type 'mastercard': Found 8 files matching target.
+2026-03-19 12:26:28,871 - ingest - INFO - Filtering for trace type '3des': 5 file(s) kept.
+2026-03-19 12:26:28,871 - ingest - INFO - Final trace file count: 5.
+2026-03-19 12:26:29,381 - ingest - INFO - Loaded CSV trace file: traces_data_1000T_1.csv
+2026-03-19 12:26:30,659 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_2.csv
+2026-03-19 12:26:31,955 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_3.csv
+2026-03-19 12:26:33,241 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_4.csv
+2026-03-19 12:26:35,147 - ingest - INFO - Loaded CSV trace file: traces_data_3000T_5.csv
+2026-03-19 12:26:35,242 - ingest - INFO - Total traces found: 10000
+2026-03-19 12:26:35,267 - feature_eng - INFO - [Pass 1] Global & Targeted POI Search...
+2026-03-19 12:26:36,064 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:38,046 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:41,630 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:43,678 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:45,740 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:47,736 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:51,284 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:53,366 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:55,408 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:26:57,454 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:01,074 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:03,091 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:05,148 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:07,228 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:11,721 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:13,766 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:16,232 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:18,367 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:20,390 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:22,395 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:24,519 - feature_eng - INFO - Global POIs (Union of S-Boxes): 150 points selected.
+2026-03-19 12:27:24,519 - feature_eng - INFO - Global POIs Stage 2 (Union of S-Boxes): 150 points selected.
+2026-03-19 12:27:24,525 - feature_eng - INFO - 
+POI Selection Complete.
+2026-03-19 12:27:24,525 - feature_eng - INFO - [Pass 2] Feature Extraction...
+2026-03-19 12:27:25,330 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:25,623 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:27,559 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:27,866 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:28,166 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:28,467 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:30,342 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:30,666 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:31,009 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:31,359 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:33,240 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:33,592 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:33,904 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:34,250 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:36,861 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:37,193 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:37,512 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:37,867 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:38,171 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:38,486 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:27:39,708 - feature_eng - INFO - 
+Done. Processed 10000 traces.
+2026-03-19 12:28:29,479 - ingest - INFO - Filtering for card type 'mastercard': Found 8 files matching target.
+2026-03-19 12:28:29,479 - ingest - INFO - Filtering for trace type '3des': 5 file(s) kept.
+2026-03-19 12:28:29,479 - ingest - INFO - Final trace file count: 5.
+2026-03-19 12:28:29,970 - ingest - INFO - Loaded CSV trace file: traces_data_1000T_1.csv
+2026-03-19 12:28:30,975 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_2.csv
+2026-03-19 12:28:32,000 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_3.csv
+2026-03-19 12:28:33,026 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_4.csv
+2026-03-19 12:28:34,426 - ingest - INFO - Loaded CSV trace file: traces_data_3000T_5.csv
+2026-03-19 12:28:34,519 - ingest - INFO - Total traces found: 10000
+2026-03-19 12:28:34,520 - feature_eng - INFO - [Pass 1] Global & Targeted POI Search...
+2026-03-19 12:28:35,340 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:37,339 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:40,981 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:43,064 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:45,112 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:47,159 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:50,827 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:52,863 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:54,908 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:28:56,933 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:00,606 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:02,631 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:04,639 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:06,686 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:11,066 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:13,081 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:15,116 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:17,116 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:19,157 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:19,950 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 12:29:19,950 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 12:29:19,963 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 12:29:19,963 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 12:29:19,973 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 12:29:19,974 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 12:29:21,227 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:23,390 - feature_eng - INFO - Global POIs (Union of S-Boxes): 150 points selected.
+2026-03-19 12:29:23,390 - feature_eng - INFO - Global POIs Stage 2 (Union of S-Boxes): 150 points selected.
+2026-03-19 12:29:23,394 - feature_eng - INFO - 
+POI Selection Complete.
+2026-03-19 12:29:23,394 - feature_eng - INFO - [Pass 2] Feature Extraction...
+2026-03-19 12:29:24,221 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:24,508 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:26,364 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:26,649 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:26,941 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:27,256 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:29,150 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:29,462 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:29,762 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:30,035 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:31,883 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:32,170 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:32,466 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:32,835 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:35,499 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:35,811 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:36,118 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:36,415 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:36,701 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:37,017 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:29:38,261 - feature_eng - INFO - 
+Done. Processed 10000 traces.
+2026-03-19 12:31:18,677 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 12:31:18,677 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 12:31:18,686 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 12:31:18,686 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 12:31:18,696 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 12:31:18,696 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 12:32:28,452 - main - WARNING - Attack mode: recomputing POIs for this run. If secrets are unavailable, correlation POI search will fall back to variance-based POIs.
+2026-03-19 12:32:28,452 - main - INFO - ==================================================
+2026-03-19 12:32:28,452 - main - INFO -    SCA PIPELINE (LEGACY-RESTORE) | Mode: attack
+2026-03-19 12:32:28,452 - main - INFO - ==================================================
+2026-03-19 12:32:28,973 - ingest - INFO - Filtering for trace type '3des': 10 file(s) kept.
+2026-03-19 12:32:28,973 - ingest - INFO - 3DES NPZ files are large (9.8GB). Using CSV files for better memory handling.
+2026-03-19 12:32:28,973 - ingest - INFO - Deduplication (3DES): Switching from NPZ to CSV due to memory constraints. Using 5 CSV file(s) with ground truth labels
+2026-03-19 12:32:28,974 - ingest - INFO - Final trace file count: 5.
+2026-03-19 12:32:29,475 - ingest - INFO - Loaded CSV trace file: traces_data_1000T_1.csv
+2026-03-19 12:32:30,510 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_2.csv
+2026-03-19 12:32:31,531 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_3.csv
+2026-03-19 12:32:32,553 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_4.csv
+2026-03-19 12:32:33,993 - ingest - INFO - Loaded CSV trace file: traces_data_3000T_5.csv
+2026-03-19 12:32:34,086 - ingest - INFO - Total traces found: 10000
+2026-03-19 12:32:34,090 - ingest - INFO - Filtering for trace type 'rsa': 4 file(s) kept.
+2026-03-19 12:32:34,090 - ingest - INFO - RSA: Using 3 CSV file(s) instead of NPZ for better trace coverage
+2026-03-19 12:32:34,090 - ingest - INFO - Final trace file count: 3.
+2026-03-19 12:32:34,529 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1000T_1.csv
+2026-03-19 12:32:35,613 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1600T_3.csv
+2026-03-19 12:32:36,775 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_2000T_2.csv
+2026-03-19 12:32:36,798 - ingest - INFO - Total traces found: 4604
+2026-03-19 12:32:36,799 - main - INFO - [STEP 1] Attack mode: Using existing processed features...
+2026-03-19 12:32:36,799 - main - INFO - [STEP 3] Running 3DES Attack (Target: session)...
+2026-03-19 12:32:40,453 - main - ERROR - 3DES Attack Failed: Missing metadata: Output/mastercard_processed\3des\Y_meta.csv
+2026-03-19 12:32:40,453 - main - INFO - [STEP 5] Generating Reports (CSV/XLSX)...
+2026-03-19 12:33:17,628 - main - INFO - ==================================================
+2026-03-19 12:33:17,628 - main - INFO -    SCA PIPELINE (LEGACY-RESTORE) | Mode: full
+2026-03-19 12:33:17,629 - main - INFO - ==================================================
+2026-03-19 12:33:18,081 - ingest - INFO - Filtering for trace type '3des': 10 file(s) kept.
+2026-03-19 12:33:18,083 - ingest - INFO - 3DES NPZ files are large (9.8GB). Using CSV files for better memory handling.
+2026-03-19 12:33:18,083 - ingest - INFO - Deduplication (3DES): Switching from NPZ to CSV due to memory constraints. Using 5 CSV file(s) with ground truth labels
+2026-03-19 12:33:18,083 - ingest - INFO - Final trace file count: 5.
+2026-03-19 12:33:18,570 - ingest - INFO - Loaded CSV trace file: traces_data_1000T_1.csv
+2026-03-19 12:33:19,605 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_2.csv
+2026-03-19 12:33:20,622 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_3.csv
+2026-03-19 12:33:21,654 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_4.csv
+2026-03-19 12:33:23,091 - ingest - INFO - Loaded CSV trace file: traces_data_3000T_5.csv
+2026-03-19 12:33:23,184 - ingest - INFO - Total traces found: 10000
+2026-03-19 12:33:23,187 - ingest - INFO - Filtering for trace type 'rsa': 4 file(s) kept.
+2026-03-19 12:33:23,187 - ingest - INFO - RSA: Using 3 CSV file(s) instead of NPZ for better trace coverage
+2026-03-19 12:33:23,187 - ingest - INFO - Final trace file count: 3.
+2026-03-19 12:33:23,613 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1000T_1.csv
+2026-03-19 12:33:24,348 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1600T_3.csv
+2026-03-19 12:33:25,213 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_2000T_2.csv
+2026-03-19 12:33:25,237 - ingest - INFO - Total traces found: 4604
+2026-03-19 12:33:29,018 - main - INFO - [STEP 1] Feature Extraction (3DES traces)...
+2026-03-19 12:33:29,022 - ingest - INFO - Filtering for trace type '3des': 10 file(s) kept.
+2026-03-19 12:33:29,023 - ingest - INFO - 3DES NPZ files are large (9.8GB). Using CSV files for better memory handling.
+2026-03-19 12:33:29,023 - ingest - INFO - Deduplication (3DES): Switching from NPZ to CSV due to memory constraints. Using 5 CSV file(s) with ground truth labels
+2026-03-19 12:33:29,023 - ingest - INFO - Final trace file count: 5.
+2026-03-19 12:33:29,551 - ingest - INFO - Loaded CSV trace file: traces_data_1000T_1.csv
+2026-03-19 12:33:30,690 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_2.csv
+2026-03-19 12:33:31,810 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_3.csv
+2026-03-19 12:33:32,869 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_4.csv
+2026-03-19 12:33:34,417 - ingest - INFO - Loaded CSV trace file: traces_data_3000T_5.csv
+2026-03-19 12:33:34,515 - ingest - INFO - Total traces found: 10000
+2026-03-19 12:33:34,516 - feature_eng - INFO - [Pass 1] Global & Targeted POI Search...
+2026-03-19 12:33:35,349 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:37,387 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:41,070 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:43,173 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:45,298 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:47,376 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:51,081 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:53,266 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:55,307 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:33:57,360 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:01,064 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:03,118 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:05,155 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:07,202 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:11,798 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:13,941 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:15,987 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:18,061 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:20,179 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:22,442 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:24,674 - feature_eng - INFO - Variance-based POI selection mode (deterministic for training/attack consistency)...
+2026-03-19 12:34:24,674 - feature_eng - INFO - Variance-based POI selection: 200 points selected for Stage 1
+2026-03-19 12:34:24,738 - feature_eng - INFO - Per-sbox POIs created with 200 variance-based points for pure_science mode
+2026-03-19 12:34:24,744 - feature_eng - INFO - 
+POI Selection Complete.
+2026-03-19 12:34:24,745 - feature_eng - INFO - [Pass 2] Feature Extraction...
+2026-03-19 12:34:25,623 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:26,052 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:28,011 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:28,363 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:28,692 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:29,029 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:31,025 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:31,377 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:31,720 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:32,042 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:34,002 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:34,344 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:34,675 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:35,032 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:37,929 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:38,319 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:38,717 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:39,194 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:39,573 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:39,943 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:34:42,722 - feature_eng - INFO - 
+Done. Processed 10000 traces.
+2026-03-19 12:36:26,581 - main - INFO - [STEP 1] Feature Extraction (RSA traces)...
+2026-03-19 12:36:26,584 - ingest - INFO - Filtering for trace type 'rsa': 4 file(s) kept.
+2026-03-19 12:36:26,584 - ingest - INFO - RSA: Using 3 CSV file(s) instead of NPZ for better trace coverage
+2026-03-19 12:36:26,584 - ingest - INFO - Final trace file count: 3.
+2026-03-19 12:36:27,054 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1000T_1.csv
+2026-03-19 12:36:27,896 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1600T_3.csv
+2026-03-19 12:36:28,826 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_2000T_2.csv
+2026-03-19 12:36:28,854 - ingest - INFO - Total traces found: 4604
+2026-03-19 12:36:28,854 - feature_eng - INFO - [Pass 1] Global & Targeted POI Search...
+2026-03-19 12:36:29,611 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:30,167 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:31,927 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:32,476 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:33,033 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:33,600 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:35,221 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:35,815 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:36,380 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:36,965 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:37,584 - feature_eng - INFO - Per-sbox POIs created with 200 variance-based points for pure_science mode
+2026-03-19 12:36:37,610 - feature_eng - INFO - 
+POI Selection Complete.
+2026-03-19 12:36:37,610 - feature_eng - INFO - [Pass 2] Feature Extraction...
+2026-03-19 12:36:38,343 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:38,659 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:40,304 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:40,618 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:40,949 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:41,280 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:42,849 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:43,239 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:43,587 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:43,902 - preprocess - INFO - Aligning traces using SAD (ChipWhisperer ResyncSAD) with correlation fallback...
+2026-03-19 12:36:44,829 - feature_eng - INFO - 
+Done. Processed 4604 traces.
+2026-03-19 12:36:44,839 - main - INFO - [STEP 2] Starting Training (3DES & RSA)...
+2026-03-19 12:36:44,841 - pipeline_3des - INFO - Training 3DES ensemble into pipeline-code/models
+2026-03-19 12:36:44,841 - pipeline_3des - INFO - Transfer learning mode: DISABLED
+2026-03-19 12:36:44,873 - train_ensemble - INFO - 
+2026-03-19 12:36:44,873 - train_ensemble - INFO - ================================================================================
+2026-03-19 12:36:44,873 - train_ensemble - INFO - Phase 1: KENC Full Training
+2026-03-19 12:36:44,873 - train_ensemble - INFO - ================================================================================
+2026-03-19 12:36:44,873 - train_ensemble - INFO - Loading Stage 1 features for KENC from Output/mastercard_processed\3des\X_features_s1.npy
+2026-03-19 12:36:45,012 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 1 (200 dimensions)
+2026-03-19 12:36:45,017 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 12:37:46,846 - train_ensemble - INFO - S-Box 1 Model 0 | Epoch 10 | Val Acc: 47.15%
+2026-03-19 12:38:06,143 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 12:38:06,143 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 51.00%
+2026-03-19 12:38:06,195 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 2 (200 dimensions)
+2026-03-19 12:38:06,202 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 12:39:06,891 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 50.30%
+2026-03-19 12:39:25,108 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 12:39:25,108 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 50.85%
+2026-03-19 12:39:25,162 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 3 (200 dimensions)
+2026-03-19 12:39:25,168 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 12:40:25,322 - train_ensemble - INFO - S-Box 3 Model 0 | Epoch 10 | Val Acc: 39.25%
+2026-03-19 12:40:43,249 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 12:40:43,249 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 50.05%
+2026-03-19 12:40:43,303 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 4 (200 dimensions)
+2026-03-19 12:40:43,311 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 12:41:43,817 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 10 | Val Acc: 49.95%
+2026-03-19 12:42:44,676 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 20 | Val Acc: 51.10%
+2026-03-19 12:43:14,446 - train_ensemble - INFO - S-Box 4 Model 0 | Early stopping at epoch 25 (no improvement for 8 epochs).
+2026-03-19 12:43:14,446 - train_ensemble - INFO - S-Box 4 Model 0 Finished. Best Acc: 52.45%
+2026-03-19 12:43:14,501 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 5 (200 dimensions)
+2026-03-19 12:43:14,506 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 5 (1 models) using 10000 traces...
+2026-03-19 12:44:14,674 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 10 | Val Acc: 24.75%
+2026-03-19 12:44:38,667 - train_ensemble - INFO - S-Box 5 Model 0 | Early stopping at epoch 14 (no improvement for 8 epochs).
+2026-03-19 12:44:38,667 - train_ensemble - INFO - S-Box 5 Model 0 Finished. Best Acc: 27.55%
+2026-03-19 12:44:38,718 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 6 (200 dimensions)
+2026-03-19 12:44:38,723 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 6 (1 models) using 10000 traces...
+2026-03-19 12:45:34,902 - train_ensemble - INFO - S-Box 6 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 12:45:34,902 - train_ensemble - INFO - S-Box 6 Model 0 Finished. Best Acc: 65.30%
+2026-03-19 12:45:34,957 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 7 (200 dimensions)
+2026-03-19 12:45:34,961 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 7 (1 models) using 10000 traces...
+2026-03-19 12:46:40,488 - train_ensemble - INFO - S-Box 7 Model 0 | Epoch 10 | Val Acc: 31.30%
+2026-03-19 12:46:52,620 - train_ensemble - INFO - S-Box 7 Model 0 | Early stopping at epoch 12 (no improvement for 8 epochs).
+2026-03-19 12:46:52,621 - train_ensemble - INFO - S-Box 7 Model 0 Finished. Best Acc: 32.85%
+2026-03-19 12:46:52,668 - train_ensemble - INFO - Using per-sbox features for KENC Stage 1 S-Box 8 (200 dimensions)
+2026-03-19 12:46:52,673 - train_ensemble - INFO - Training 3DES KENC Stage 1 S-Box 8 (1 models) using 10000 traces...
+2026-03-19 12:47:52,380 - train_ensemble - INFO - S-Box 8 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 12:47:52,381 - train_ensemble - INFO - S-Box 8 Model 0 Finished. Best Acc: 50.85%
+2026-03-19 12:47:52,434 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 1 (200 dimensions)
+2026-03-19 12:47:52,440 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 12:48:53,086 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 12:48:53,086 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 51.25%
+2026-03-19 12:48:53,139 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 2 (200 dimensions)
+2026-03-19 12:48:53,145 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 12:49:53,962 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 51.45%
+2026-03-19 12:50:54,387 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 20 | Val Acc: 52.05%
+2026-03-19 12:51:42,725 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 28 (no improvement for 8 epochs).
+2026-03-19 12:51:42,725 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 52.05%
+2026-03-19 12:51:42,773 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 3 (200 dimensions)
+2026-03-19 12:51:42,779 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 12:52:42,366 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 12:52:42,366 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 49.90%
+2026-03-19 12:52:42,417 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 4 (200 dimensions)
+2026-03-19 12:52:42,421 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 12:53:43,090 - train_ensemble - INFO - S-Box 4 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 12:53:43,090 - train_ensemble - INFO - S-Box 4 Model 0 Finished. Best Acc: 51.35%
+2026-03-19 12:53:43,150 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 5 (200 dimensions)
+2026-03-19 12:53:43,156 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 5 (1 models) using 10000 traces...
+2026-03-19 12:54:44,082 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 10 | Val Acc: 25.60%
+2026-03-19 12:55:19,817 - train_ensemble - INFO - S-Box 5 Model 0 | Early stopping at epoch 16 (no improvement for 8 epochs).
+2026-03-19 12:55:19,817 - train_ensemble - INFO - S-Box 5 Model 0 Finished. Best Acc: 26.90%
+2026-03-19 12:55:19,872 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 6 (200 dimensions)
+2026-03-19 12:55:19,878 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 6 (1 models) using 10000 traces...
+2026-03-19 12:56:15,344 - train_ensemble - INFO - S-Box 6 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 12:56:15,344 - train_ensemble - INFO - S-Box 6 Model 0 Finished. Best Acc: 65.30%
+2026-03-19 12:56:15,392 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 7 (200 dimensions)
+2026-03-19 12:56:15,397 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 7 (1 models) using 10000 traces...
+2026-03-19 12:57:09,506 - train_ensemble - INFO - S-Box 7 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 12:57:09,506 - train_ensemble - INFO - S-Box 7 Model 0 Finished. Best Acc: 33.55%
+2026-03-19 12:57:09,555 - train_ensemble - INFO - Using per-sbox features for KENC Stage 2 S-Box 8 (200 dimensions)
+2026-03-19 12:57:09,559 - train_ensemble - INFO - Training 3DES KENC Stage 2 S-Box 8 (1 models) using 10000 traces...
+2026-03-19 12:58:10,037 - train_ensemble - INFO - S-Box 8 Model 0 | Epoch 10 | Val Acc: 50.80%
+2026-03-19 12:59:09,769 - train_ensemble - INFO - S-Box 8 Model 0 | Epoch 20 | Val Acc: 51.65%
+2026-03-19 12:59:36,410 - train_ensemble - INFO - S-Box 8 Model 0 | Early stopping at epoch 24 (no improvement for 8 epochs).
+2026-03-19 12:59:36,411 - train_ensemble - INFO - S-Box 8 Model 0 Finished. Best Acc: 52.40%
+2026-03-19 12:59:36,411 - train_ensemble - INFO - Phase 1: KENC Full Training Complete
+2026-03-19 12:59:36,412 - train_ensemble - INFO - 
+2026-03-19 12:59:36,412 - train_ensemble - INFO - ================================================================================
+2026-03-19 12:59:36,412 - train_ensemble - INFO - Phase 2: KMAC Transfer Learning
+2026-03-19 12:59:36,412 - train_ensemble - INFO - ================================================================================
+2026-03-19 12:59:36,412 - train_ensemble - INFO - Loading Stage 1 features for KMAC from Output/mastercard_processed\3des\X_features_s1.npy
+2026-03-19 12:59:36,514 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 1 (200 dimensions)
+2026-03-19 12:59:36,519 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 13:00:38,491 - train_ensemble - INFO - S-Box 1 Model 0 | Epoch 10 | Val Acc: 41.35%
+2026-03-19 13:00:56,385 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 13:00:56,387 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 51.80%
+2026-03-19 13:00:56,429 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 2 (200 dimensions)
+2026-03-19 13:00:56,434 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 13:01:57,247 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 49.95%
+2026-03-19 13:02:27,109 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 15 (no improvement for 8 epochs).
+2026-03-19 13:02:27,109 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 50.75%
+2026-03-19 13:02:27,151 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 3 (200 dimensions)
+2026-03-19 13:02:27,156 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 13:03:21,203 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 13:03:21,203 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 49.90%
+2026-03-19 13:03:21,246 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 4 (200 dimensions)
+2026-03-19 13:03:21,251 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 14:18:40,636 - continue_training - INFO - ================================================================================
+2026-03-19 14:18:40,636 - continue_training - INFO - CONTINUING 3DES TRAINING (Mastercard)
+2026-03-19 14:18:40,637 - continue_training - INFO - ================================================================================
+2026-03-19 14:18:40,637 - continue_training - INFO - [STEP 1] Verified preprocessing complete
+2026-03-19 14:18:40,637 - continue_training - INFO -   - 10,000 traces already processed
+2026-03-19 14:18:40,637 - continue_training - INFO -   - Features extracted and saved
+2026-03-19 14:18:40,637 - continue_training - INFO - 
+[STEP 2] Continuing ensemble training...
+2026-03-19 14:18:40,710 - train_ensemble - INFO - 
+2026-03-19 14:18:40,710 - train_ensemble - INFO - ================================================================================
+2026-03-19 14:18:40,710 - train_ensemble - INFO - Phase 2: KMAC Transfer Learning
+2026-03-19 14:18:40,710 - train_ensemble - INFO - ================================================================================
+2026-03-19 14:18:40,710 - train_ensemble - INFO - Loading Stage 1 features for KMAC from Output/mastercard_processed/3des\X_features_s1.npy
+2026-03-19 14:18:40,809 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 1 (200 dimensions)
+2026-03-19 14:18:40,814 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 14:19:43,356 - train_ensemble - INFO - S-Box 1 Model 0 | Epoch 10 | Val Acc: 50.00%
+2026-03-19 14:20:00,714 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 14:20:00,714 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 51.00%
+2026-03-19 14:20:00,747 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 2 (200 dimensions)
+2026-03-19 14:20:00,754 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 14:20:50,102 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 49.85%
+2026-03-19 14:21:19,953 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 15 (no improvement for 8 epochs).
+2026-03-19 14:21:19,953 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 51.35%
+2026-03-19 14:21:19,977 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 3 (200 dimensions)
+2026-03-19 14:21:19,981 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 14:22:06,729 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:22:06,729 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 49.60%
+2026-03-19 14:22:06,751 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 4 (200 dimensions)
+2026-03-19 14:22:06,756 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 14:22:51,856 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 10 | Val Acc: 49.90%
+2026-03-19 14:23:34,372 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 20 | Val Acc: 50.90%
+2026-03-19 14:24:18,068 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 30 | Val Acc: 50.65%
+2026-03-19 14:24:48,204 - train_ensemble - INFO - S-Box 4 Model 0 | Early stopping at epoch 37 (no improvement for 8 epochs).
+2026-03-19 14:24:48,204 - train_ensemble - INFO - S-Box 4 Model 0 Finished. Best Acc: 52.35%
+2026-03-19 14:24:48,232 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 5 (200 dimensions)
+2026-03-19 14:24:48,236 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 5 (1 models) using 10000 traces...
+2026-03-19 14:25:33,776 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 10 | Val Acc: 27.00%
+2026-03-19 14:26:08,231 - train_ensemble - INFO - S-Box 5 Model 0 | Early stopping at epoch 18 (no improvement for 8 epochs).
+2026-03-19 14:26:08,231 - train_ensemble - INFO - S-Box 5 Model 0 Finished. Best Acc: 27.00%
+2026-03-19 14:26:08,247 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 6 (200 dimensions)
+2026-03-19 14:26:08,257 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 6 (1 models) using 10000 traces...
+2026-03-19 14:26:46,521 - train_ensemble - INFO - S-Box 6 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:26:46,528 - train_ensemble - INFO - S-Box 6 Model 0 Finished. Best Acc: 65.30%
+2026-03-19 14:26:46,547 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 7 (200 dimensions)
+2026-03-19 14:26:46,549 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 7 (1 models) using 10000 traces...
+2026-03-19 14:27:30,522 - train_ensemble - INFO - S-Box 7 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 14:27:30,522 - train_ensemble - INFO - S-Box 7 Model 0 Finished. Best Acc: 32.95%
+2026-03-19 14:27:30,541 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 1 S-Box 8 (200 dimensions)
+2026-03-19 14:27:30,546 - train_ensemble - INFO - Training 3DES KMAC Stage 1 S-Box 8 (1 models) using 10000 traces...
+2026-03-19 14:28:12,925 - train_ensemble - INFO - S-Box 8 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 14:28:12,925 - train_ensemble - INFO - S-Box 8 Model 0 Finished. Best Acc: 50.70%
+2026-03-19 14:28:12,949 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 1 (200 dimensions)
+2026-03-19 14:28:12,953 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 14:28:55,882 - train_ensemble - INFO - S-Box 1 Model 0 | Epoch 10 | Val Acc: 33.70%
+2026-03-19 14:29:04,441 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 12 (no improvement for 8 epochs).
+2026-03-19 14:29:04,441 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 51.95%
+2026-03-19 14:29:04,466 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 2 (200 dimensions)
+2026-03-19 14:29:04,468 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 14:29:47,930 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 49.75%
+2026-03-19 14:30:30,930 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 20 | Val Acc: 49.90%
+2026-03-19 14:31:14,296 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 30 | Val Acc: 50.00%
+2026-03-19 14:31:19,522 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 31 (no improvement for 8 epochs).
+2026-03-19 14:31:19,522 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 51.90%
+2026-03-19 14:31:19,542 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 3 (200 dimensions)
+2026-03-19 14:31:19,546 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 14:32:05,969 - train_ensemble - INFO - S-Box 3 Model 0 | Epoch 10 | Val Acc: 28.65%
+2026-03-19 14:32:10,546 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 11 (no improvement for 8 epochs).
+2026-03-19 14:32:10,546 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 49.15%
+2026-03-19 14:32:10,565 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 4 (200 dimensions)
+2026-03-19 14:32:10,570 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 14:32:54,397 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 10 | Val Acc: 51.30%
+2026-03-19 14:33:28,743 - train_ensemble - INFO - S-Box 4 Model 0 | Early stopping at epoch 18 (no improvement for 8 epochs).
+2026-03-19 14:33:28,743 - train_ensemble - INFO - S-Box 4 Model 0 Finished. Best Acc: 51.30%
+2026-03-19 14:33:28,766 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 5 (200 dimensions)
+2026-03-19 14:33:28,770 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 5 (1 models) using 10000 traces...
+2026-03-19 14:34:11,121 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 10 | Val Acc: 25.10%
+2026-03-19 14:34:36,326 - train_ensemble - INFO - S-Box 5 Model 0 | Early stopping at epoch 16 (no improvement for 8 epochs).
+2026-03-19 14:34:36,326 - train_ensemble - INFO - S-Box 5 Model 0 Finished. Best Acc: 27.05%
+2026-03-19 14:34:36,344 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 6 (200 dimensions)
+2026-03-19 14:34:36,350 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 6 (1 models) using 10000 traces...
+2026-03-19 14:35:14,527 - train_ensemble - INFO - S-Box 6 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:35:14,527 - train_ensemble - INFO - S-Box 6 Model 0 Finished. Best Acc: 65.30%
+2026-03-19 14:35:14,545 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 7 (200 dimensions)
+2026-03-19 14:35:14,549 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 7 (1 models) using 10000 traces...
+2026-03-19 14:35:58,523 - train_ensemble - INFO - S-Box 7 Model 0 | Epoch 10 | Val Acc: 33.10%
+2026-03-19 14:36:32,268 - train_ensemble - INFO - S-Box 7 Model 0 | Early stopping at epoch 18 (no improvement for 8 epochs).
+2026-03-19 14:36:32,268 - train_ensemble - INFO - S-Box 7 Model 0 Finished. Best Acc: 33.10%
+2026-03-19 14:36:32,287 - train_ensemble - INFO - Using per-sbox features for KMAC Stage 2 S-Box 8 (200 dimensions)
+2026-03-19 14:36:32,287 - train_ensemble - INFO - Training 3DES KMAC Stage 2 S-Box 8 (1 models) using 10000 traces...
+2026-03-19 14:37:11,226 - train_ensemble - INFO - S-Box 8 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:37:11,226 - train_ensemble - INFO - S-Box 8 Model 0 Finished. Best Acc: 51.60%
+2026-03-19 14:37:11,227 - train_ensemble - INFO - Phase 2: KMAC Transfer Learning Complete
+2026-03-19 14:37:11,227 - train_ensemble - INFO - 
+2026-03-19 14:37:11,227 - train_ensemble - INFO - ================================================================================
+2026-03-19 14:37:11,227 - train_ensemble - INFO - Phase 3: KDEK Transfer Learning
+2026-03-19 14:37:11,227 - train_ensemble - INFO - ================================================================================
+2026-03-19 14:37:11,227 - train_ensemble - INFO - Loading Stage 1 features for KDEK from Output/mastercard_processed/3des\X_features_s1.npy
+2026-03-19 14:37:11,301 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 1 (200 dimensions)
+2026-03-19 14:37:11,306 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 14:37:54,192 - train_ensemble - INFO - S-Box 1 Model 0 | Epoch 10 | Val Acc: 41.15%
+2026-03-19 14:38:02,597 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 12 (no improvement for 8 epochs).
+2026-03-19 14:38:02,597 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 50.85%
+2026-03-19 14:38:02,620 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 2 (200 dimensions)
+2026-03-19 14:38:02,624 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 14:38:44,916 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 49.95%
+2026-03-19 14:38:57,470 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 14:38:57,470 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 52.00%
+2026-03-19 14:38:57,489 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 3 (200 dimensions)
+2026-03-19 14:38:57,493 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 14:39:42,540 - train_ensemble - INFO - S-Box 3 Model 0 | Epoch 10 | Val Acc: 31.15%
+2026-03-19 14:39:46,755 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 11 (no improvement for 8 epochs).
+2026-03-19 14:39:46,757 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 50.00%
+2026-03-19 14:39:46,776 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 4 (200 dimensions)
+2026-03-19 14:39:46,780 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 14:40:29,257 - train_ensemble - INFO - S-Box 4 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 14:40:29,257 - train_ensemble - INFO - S-Box 4 Model 0 Finished. Best Acc: 50.05%
+2026-03-19 14:40:29,289 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 5 (200 dimensions)
+2026-03-19 14:40:29,289 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 5 (1 models) using 10000 traces...
+2026-03-19 14:41:12,403 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 10 | Val Acc: 25.55%
+2026-03-19 14:41:54,876 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 20 | Val Acc: 26.90%
+2026-03-19 14:41:59,075 - train_ensemble - INFO - S-Box 5 Model 0 | Early stopping at epoch 21 (no improvement for 8 epochs).
+2026-03-19 14:41:59,075 - train_ensemble - INFO - S-Box 5 Model 0 Finished. Best Acc: 26.90%
+2026-03-19 14:41:59,096 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 6 (200 dimensions)
+2026-03-19 14:41:59,101 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 6 (1 models) using 10000 traces...
+2026-03-19 14:42:37,024 - train_ensemble - INFO - S-Box 6 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:42:37,024 - train_ensemble - INFO - S-Box 6 Model 0 Finished. Best Acc: 65.30%
+2026-03-19 14:42:37,043 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 7 (200 dimensions)
+2026-03-19 14:42:37,043 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 7 (1 models) using 10000 traces...
+2026-03-19 14:43:19,715 - train_ensemble - INFO - S-Box 7 Model 0 | Epoch 10 | Val Acc: 30.90%
+2026-03-19 14:43:36,295 - train_ensemble - INFO - S-Box 7 Model 0 | Early stopping at epoch 14 (no improvement for 8 epochs).
+2026-03-19 14:43:36,295 - train_ensemble - INFO - S-Box 7 Model 0 Finished. Best Acc: 33.55%
+2026-03-19 14:43:36,325 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 1 S-Box 8 (200 dimensions)
+2026-03-19 14:43:36,327 - train_ensemble - INFO - Training 3DES KDEK Stage 1 S-Box 8 (1 models) using 10000 traces...
+2026-03-19 14:44:14,100 - train_ensemble - INFO - S-Box 8 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:44:14,100 - train_ensemble - INFO - S-Box 8 Model 0 Finished. Best Acc: 50.75%
+2026-03-19 14:44:14,119 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 1 (200 dimensions)
+2026-03-19 14:44:14,119 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 1 (1 models) using 10000 traces...
+2026-03-19 14:44:57,297 - train_ensemble - INFO - S-Box 1 Model 0 | Epoch 10 | Val Acc: 39.25%
+2026-03-19 14:45:10,065 - train_ensemble - INFO - S-Box 1 Model 0 | Early stopping at epoch 13 (no improvement for 8 epochs).
+2026-03-19 14:45:10,065 - train_ensemble - INFO - S-Box 1 Model 0 Finished. Best Acc: 50.70%
+2026-03-19 14:45:10,086 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 2 (200 dimensions)
+2026-03-19 14:45:10,089 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 2 (1 models) using 10000 traces...
+2026-03-19 14:45:52,475 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 10 | Val Acc: 50.15%
+2026-03-19 14:46:34,499 - train_ensemble - INFO - S-Box 2 Model 0 | Epoch 20 | Val Acc: 50.60%
+2026-03-19 14:46:46,966 - train_ensemble - INFO - S-Box 2 Model 0 | Early stopping at epoch 23 (no improvement for 8 epochs).
+2026-03-19 14:46:46,966 - train_ensemble - INFO - S-Box 2 Model 0 Finished. Best Acc: 51.95%
+2026-03-19 14:46:46,982 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 3 (200 dimensions)
+2026-03-19 14:46:46,982 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 3 (1 models) using 10000 traces...
+2026-03-19 14:47:29,274 - train_ensemble - INFO - S-Box 3 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 14:47:29,274 - train_ensemble - INFO - S-Box 3 Model 0 Finished. Best Acc: 50.00%
+2026-03-19 14:47:29,289 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 4 (200 dimensions)
+2026-03-19 14:47:29,301 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 4 (1 models) using 10000 traces...
+2026-03-19 14:48:11,958 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 10 | Val Acc: 51.20%
+2026-03-19 14:48:54,404 - train_ensemble - INFO - S-Box 4 Model 0 | Epoch 20 | Val Acc: 51.85%
+2026-03-19 14:49:19,588 - train_ensemble - INFO - S-Box 4 Model 0 | Early stopping at epoch 26 (no improvement for 8 epochs).
+2026-03-19 14:49:19,588 - train_ensemble - INFO - S-Box 4 Model 0 Finished. Best Acc: 52.80%
+2026-03-19 14:49:19,609 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 5 (200 dimensions)
+2026-03-19 14:49:19,609 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 5 (1 models) using 10000 traces...
+2026-03-19 14:50:02,444 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 10 | Val Acc: 25.65%
+2026-03-19 14:50:44,669 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 20 | Val Acc: 27.40%
+2026-03-19 14:51:26,813 - train_ensemble - INFO - S-Box 5 Model 0 | Epoch 30 | Val Acc: 26.15%
+2026-03-19 14:51:45,484 - train_ensemble - INFO - S-Box 5 Model 0 | Early stopping at epoch 34 (no improvement for 8 epochs).
+2026-03-19 14:51:45,484 - train_ensemble - INFO - S-Box 5 Model 0 Finished. Best Acc: 27.60%
+2026-03-19 14:51:45,510 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 6 (200 dimensions)
+2026-03-19 14:51:45,515 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 6 (1 models) using 10000 traces...
+2026-03-19 14:52:23,977 - train_ensemble - INFO - S-Box 6 Model 0 | Early stopping at epoch 9 (no improvement for 8 epochs).
+2026-03-19 14:52:23,977 - train_ensemble - INFO - S-Box 6 Model 0 Finished. Best Acc: 65.30%
+2026-03-19 14:52:23,997 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 7 (200 dimensions)
+2026-03-19 14:52:24,001 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 7 (1 models) using 10000 traces...
+2026-03-19 14:53:03,455 - train_ensemble - INFO - S-Box 7 Model 0 | Epoch 10 | Val Acc: 31.65%
+2026-03-19 14:53:26,396 - train_ensemble - INFO - S-Box 7 Model 0 | Early stopping at epoch 16 (no improvement for 8 epochs).
+2026-03-19 14:53:26,396 - train_ensemble - INFO - S-Box 7 Model 0 Finished. Best Acc: 33.05%
+2026-03-19 14:53:26,414 - train_ensemble - INFO - Using per-sbox features for KDEK Stage 2 S-Box 8 (200 dimensions)
+2026-03-19 14:53:26,419 - train_ensemble - INFO - Training 3DES KDEK Stage 2 S-Box 8 (1 models) using 10000 traces...
+2026-03-19 14:54:09,224 - train_ensemble - INFO - S-Box 8 Model 0 | Early stopping at epoch 10 (no improvement for 8 epochs).
+2026-03-19 14:54:09,224 - train_ensemble - INFO - S-Box 8 Model 0 Finished. Best Acc: 51.40%
+2026-03-19 14:54:09,224 - train_ensemble - INFO - Phase 3: KDEK Transfer Learning Complete
+2026-03-19 14:54:09,233 - continue_training - INFO - 
+[STEP 3] Running inference on 10,000 traces...
+2026-03-19 14:55:49,396 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 14:55:49,396 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 14:55:51,827 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 14:55:54,305 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 14:55:56,729 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 14:55:59,426 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 14:56:01,919 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 14:56:04,288 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 14:56:06,786 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 14:56:09,156 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 14:56:09,338 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 14:56:11,668 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 14:56:14,018 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 14:56:16,385 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 14:56:18,746 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 14:56:21,096 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 14:56:23,514 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 14:56:25,931 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 14:56:28,299 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 14:56:28,306 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 14:56:30,686 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 14:56:33,076 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 14:56:35,467 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 14:56:37,796 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 14:56:40,139 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 14:56:42,511 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 14:56:44,956 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 14:56:47,424 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 14:56:47,610 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 14:56:50,080 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 14:56:52,423 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 14:56:54,786 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 14:56:57,143 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 14:56:59,522 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 14:57:01,912 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 14:57:04,322 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 14:57:06,731 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 14:57:06,731 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 14:57:09,156 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 14:57:11,584 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 14:57:14,026 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 14:57:16,448 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 14:57:18,869 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 14:57:21,295 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 14:57:23,751 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 14:57:26,177 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 14:57:26,363 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 14:57:28,747 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 14:57:31,211 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 14:57:33,653 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 14:57:36,085 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 14:57:38,521 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 14:57:40,968 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 14:57:43,472 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:02:53,297 - main - WARNING - Attack mode: recomputing POIs for this run. If secrets are unavailable, correlation POI search will fall back to variance-based POIs.
+2026-03-19 15:02:53,298 - main - INFO - ==================================================
+2026-03-19 15:02:53,298 - main - INFO -    SCA PIPELINE (LEGACY-RESTORE) | Mode: attack
+2026-03-19 15:02:53,298 - main - INFO - ==================================================
+2026-03-19 15:02:53,717 - ingest - INFO - Filtering for trace type '3des': 10 file(s) kept.
+2026-03-19 15:02:53,717 - ingest - INFO - 3DES NPZ files are large (9.8GB). Using CSV files for better memory handling.
+2026-03-19 15:02:53,717 - ingest - INFO - Deduplication (3DES): Switching from NPZ to CSV due to memory constraints. Using 5 CSV file(s) with ground truth labels
+2026-03-19 15:02:53,717 - ingest - INFO - Final trace file count: 5.
+2026-03-19 15:02:54,205 - ingest - INFO - Loaded CSV trace file: traces_data_1000T_1.csv
+2026-03-19 15:02:55,233 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_2.csv
+2026-03-19 15:02:56,307 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_3.csv
+2026-03-19 15:02:57,517 - ingest - INFO - Loaded CSV trace file: traces_data_2000T_4.csv
+2026-03-19 15:02:59,005 - ingest - INFO - Loaded CSV trace file: traces_data_3000T_5.csv
+2026-03-19 15:02:59,110 - ingest - INFO - Total traces found: 10000
+2026-03-19 15:02:59,111 - ingest - INFO - Filtering for trace type 'rsa': 4 file(s) kept.
+2026-03-19 15:02:59,111 - ingest - INFO - RSA: Using 3 CSV file(s) instead of NPZ for better trace coverage
+2026-03-19 15:02:59,111 - ingest - INFO - Final trace file count: 3.
+2026-03-19 15:02:59,566 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1000T_1.csv
+2026-03-19 15:03:00,338 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_1600T_3.csv
+2026-03-19 15:03:01,241 - ingest - INFO - Loaded CSV trace file: traces_data_rsa_2000T_2.csv
+2026-03-19 15:03:01,265 - ingest - INFO - Total traces found: 4604
+2026-03-19 15:03:01,266 - main - INFO - [STEP 1] Attack mode: Using existing processed features...
+2026-03-19 15:03:01,266 - main - INFO - [STEP 3] Running 3DES Attack (Target: session)...
+2026-03-19 15:03:05,208 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:03:05,226 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 15:03:07,602 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 15:03:09,996 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 15:03:12,388 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 15:03:14,791 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 15:03:17,211 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 15:03:19,581 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 15:03:22,002 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 15:03:24,349 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:03:24,558 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 15:03:26,942 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 15:03:29,298 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 15:03:31,677 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 15:03:34,047 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 15:03:36,490 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 15:03:38,895 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 15:03:41,288 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 15:03:43,666 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:03:43,692 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 15:03:46,066 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 15:03:48,466 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 15:03:50,944 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 15:03:53,309 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 15:03:55,676 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 15:03:58,049 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 15:04:00,440 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 15:04:02,895 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:04:03,094 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 15:04:05,525 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 15:04:07,911 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 15:04:10,300 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 15:04:12,680 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 15:04:15,072 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 15:04:17,496 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 15:04:19,868 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 15:04:22,375 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:04:22,395 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 15:04:24,938 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 15:04:27,525 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 15:04:30,072 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 15:04:32,589 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 15:04:35,114 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 15:04:37,722 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 15:04:40,113 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 15:04:42,540 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:04:42,738 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using per-sbox features (200 dim)
+2026-03-19 15:04:45,127 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using per-sbox features (200 dim)
+2026-03-19 15:04:47,537 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using per-sbox features (200 dim)
+2026-03-19 15:04:49,899 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using per-sbox features (200 dim)
+2026-03-19 15:04:52,257 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using per-sbox features (200 dim)
+2026-03-19 15:04:54,648 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using per-sbox features (200 dim)
+2026-03-19 15:04:57,025 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using per-sbox features (200 dim)
+2026-03-19 15:04:59,404 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (200 dim)
+2026-03-19 15:05:01,848 - main - INFO - Recovered 3DES keys (pure ML): ['3DES_KENC', '3DES_KMAC', '3DES_KDEK']
+2026-03-19 15:05:01,852 - main - INFO - [STEP 5] Generating Reports (CSV/XLSX)...
+2026-03-19 15:05:03,488 - main - INFO - Pipeline Complete. Generated 3DES-only report with 10000 rows
+2026-03-19 15:17:03,411 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:17:03,412 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:17:06,207 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:17:08,760 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:17:11,540 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:17:14,040 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:17:16,589 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:17:19,044 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:17:21,557 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:17:24,148 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:17:24,329 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:17:26,837 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:17:29,305 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:17:31,778 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:17:34,228 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:17:36,668 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:17:39,125 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:17:41,677 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:17:44,167 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:17:44,169 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:17:46,696 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:17:49,138 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:17:51,585 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:17:54,096 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:17:56,547 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:17:59,009 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:18:01,549 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:18:04,006 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:18:04,187 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:18:06,663 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:18:09,119 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:18:11,637 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:18:14,152 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:18:16,616 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:18:19,059 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:18:21,580 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:18:24,038 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:18:24,040 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:18:26,553 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:18:28,986 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:18:31,463 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:18:33,949 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:18:36,411 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:18:38,856 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:18:41,388 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:18:43,898 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:18:44,084 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:18:46,546 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:18:48,972 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:18:51,431 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:18:53,886 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:18:56,411 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:18:58,872 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:19:01,436 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:19:45,032 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:19:45,032 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:19:47,619 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:19:50,186 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:19:52,792 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:19:55,432 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:19:57,963 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:20:00,483 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:20:03,080 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:20:05,522 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:20:05,709 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:20:08,178 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:20:10,680 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:20:13,159 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:20:15,634 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:20:18,115 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:20:20,596 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:20:23,134 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:20:25,598 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:20:25,600 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:20:28,041 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:20:30,508 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:20:32,952 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:20:35,409 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:20:37,877 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:20:40,340 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:20:42,866 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:20:45,354 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:20:45,541 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:20:48,063 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:20:50,519 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:20:52,988 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:20:55,465 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:20:57,937 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:21:00,386 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:21:02,961 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:21:05,450 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:21:05,452 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:21:07,898 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:21:10,391 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:21:12,876 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:21:15,347 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:21:17,822 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:21:20,287 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:21:22,827 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:21:25,348 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:21:25,529 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:21:28,072 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:21:30,624 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:21:33,143 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:21:35,596 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:21:38,176 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:21:40,698 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:21:43,346 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:22:21,505 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:22:21,506 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:22:23,944 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:22:26,378 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:22:28,800 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:22:31,219 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:22:33,661 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:22:36,101 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:22:38,626 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:22:41,096 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:22:41,278 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:22:43,702 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:22:46,121 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:22:48,531 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:22:50,939 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:22:53,361 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:22:55,777 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:22:58,275 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:23:00,710 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:23:00,713 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:23:03,135 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:23:05,534 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:23:07,960 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:23:10,373 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:23:12,831 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:23:15,254 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:23:17,770 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:23:20,203 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:23:20,384 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:23:22,838 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:23:25,274 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:23:27,692 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:23:30,092 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:23:32,520 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:23:34,949 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:23:37,435 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:23:39,874 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:23:39,876 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:23:42,299 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:23:44,747 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:23:47,193 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:23:49,660 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:23:52,074 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:23:54,510 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:23:57,004 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:23:59,519 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:23:59,701 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:24:02,116 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:24:04,720 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:24:07,405 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:24:09,857 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:24:12,308 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:24:14,715 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:24:17,281 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:24:39,593 - inference_3des - INFO - Stage-1 kenc: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:24:39,594 - inference_3des - INFO - Stage-1 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:24:42,053 - inference_3des - INFO - Stage-1 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:24:44,492 - inference_3des - INFO - Stage-1 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:24:46,936 - inference_3des - INFO - Stage-1 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:24:49,374 - inference_3des - INFO - Stage-1 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:24:51,811 - inference_3des - INFO - Stage-1 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:24:54,282 - inference_3des - INFO - Stage-1 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:24:56,773 - inference_3des - INFO - Stage-1 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:24:59,227 - inference_3des - INFO - Stage-2 kenc: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:24:59,406 - inference_3des - INFO - Stage-2 kenc S-Box 1: Using global features (150 dim)
+2026-03-19 15:25:01,821 - inference_3des - INFO - Stage-2 kenc S-Box 2: Using global features (150 dim)
+2026-03-19 15:25:04,251 - inference_3des - INFO - Stage-2 kenc S-Box 3: Using global features (150 dim)
+2026-03-19 15:25:06,678 - inference_3des - INFO - Stage-2 kenc S-Box 4: Using global features (150 dim)
+2026-03-19 15:25:09,115 - inference_3des - INFO - Stage-2 kenc S-Box 5: Using global features (150 dim)
+2026-03-19 15:25:11,569 - inference_3des - INFO - Stage-2 kenc S-Box 6: Using global features (150 dim)
+2026-03-19 15:25:14,039 - inference_3des - INFO - Stage-2 kenc S-Box 7: Using global features (150 dim)
+2026-03-19 15:25:16,531 - inference_3des - INFO - Stage-2 kenc S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:25:18,921 - inference_3des - INFO - Stage-1 kmac: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:25:18,923 - inference_3des - INFO - Stage-1 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:25:21,333 - inference_3des - INFO - Stage-1 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:25:23,742 - inference_3des - INFO - Stage-1 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:25:26,165 - inference_3des - INFO - Stage-1 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:25:28,580 - inference_3des - INFO - Stage-1 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:25:31,076 - inference_3des - INFO - Stage-1 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:25:33,508 - inference_3des - INFO - Stage-1 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:25:36,027 - inference_3des - INFO - Stage-1 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:25:38,463 - inference_3des - INFO - Stage-2 kmac: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:25:38,644 - inference_3des - INFO - Stage-2 kmac S-Box 1: Using global features (150 dim)
+2026-03-19 15:25:41,077 - inference_3des - INFO - Stage-2 kmac S-Box 2: Using global features (150 dim)
+2026-03-19 15:25:43,506 - inference_3des - INFO - Stage-2 kmac S-Box 3: Using global features (150 dim)
+2026-03-19 15:25:45,942 - inference_3des - INFO - Stage-2 kmac S-Box 4: Using global features (150 dim)
+2026-03-19 15:25:48,343 - inference_3des - INFO - Stage-2 kmac S-Box 5: Using global features (150 dim)
+2026-03-19 15:25:50,743 - inference_3des - INFO - Stage-2 kmac S-Box 6: Using global features (150 dim)
+2026-03-19 15:25:53,197 - inference_3des - INFO - Stage-2 kmac S-Box 7: Using global features (150 dim)
+2026-03-19 15:25:55,727 - inference_3des - INFO - Stage-2 kmac S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:25:58,163 - inference_3des - INFO - Stage-1 kdek: Using recomputed normalization for detected card type 'mastercard' (n=10000)
+2026-03-19 15:25:58,165 - inference_3des - INFO - Stage-1 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:26:00,595 - inference_3des - INFO - Stage-1 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:26:03,009 - inference_3des - INFO - Stage-1 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:26:05,433 - inference_3des - INFO - Stage-1 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:26:07,827 - inference_3des - INFO - Stage-1 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:26:10,258 - inference_3des - INFO - Stage-1 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:26:12,689 - inference_3des - INFO - Stage-1 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:26:15,188 - inference_3des - INFO - Stage-1 kdek S-Box 8: Using per-sbox features (800 dim)
+2026-03-19 15:26:17,667 - inference_3des - INFO - Stage-2 kdek: Using recomputed normalization for detected card type 'mastercard'
+2026-03-19 15:26:17,849 - inference_3des - INFO - Stage-2 kdek S-Box 1: Using global features (150 dim)
+2026-03-19 15:26:20,269 - inference_3des - INFO - Stage-2 kdek S-Box 2: Using global features (150 dim)
+2026-03-19 15:26:22,685 - inference_3des - INFO - Stage-2 kdek S-Box 3: Using global features (150 dim)
+2026-03-19 15:26:25,104 - inference_3des - INFO - Stage-2 kdek S-Box 4: Using global features (150 dim)
+2026-03-19 15:26:27,530 - inference_3des - INFO - Stage-2 kdek S-Box 5: Using global features (150 dim)
+2026-03-19 15:26:29,939 - inference_3des - INFO - Stage-2 kdek S-Box 6: Using global features (150 dim)
+2026-03-19 15:26:32,360 - inference_3des - INFO - Stage-2 kdek S-Box 7: Using global features (150 dim)
+2026-03-19 15:26:34,864 - inference_3des - INFO - Stage-2 kdek S-Box 8: Using per-sbox features (800 dim)

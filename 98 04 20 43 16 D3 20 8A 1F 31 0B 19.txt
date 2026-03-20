@@ -1,0 +1,18 @@
+98 04 20 43 16 D3 20 8A 1F 31 0B 19 CB AD D9 08
+9E 15 20 43 13 F7 31 8A CB 79 B9 0B D9 86 AD 29
+
+01 0B 52 52 1C 10 A4 46 3B 01 08 F1 0B 16 80 2F
+
+10 0E B0 46 58 D0 01 80 01 10 0E B0 57 58 D0 01
+
+
+91 86 32 4A 01 01 29 43 83 08 85 6B 29 01 40 2F
+9E 15 20 43 13 F7 31 8A CB 79 B9 0B D9 86 AD 29 <--original
+10 04 92 26 4C 01 07 52 92 01 04 D9 29 40 D0 0B
+
+
+try whether pipeline is converting hex to decimal
+
+I am thinking to do unsupervised learning using these traces and prepare pipeline for both - unspervised learning and also Visa traces, so that in future if single blind trace of Visa family is given, it will be 100% accurate for them as well? And Lastly thinking to submit the pipeline such that if Mastercard blind trace is given, pipeline will be able to get the ground truth using supervised learning approach and for Visa pipeline, it will be able to get to the ground truth using unspervised learning appraoch - with both being 100% accurate.
+
+What if we make cpa mode default for both family of cards to get 100% accurate results? Theoretically is it possible for both families?

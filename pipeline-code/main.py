@@ -7,16 +7,6 @@ from src.utils import setup_logger
 
 logger = setup_logger("main")
 
-def _has_trace_type(input_dir: str, file_pattern: str, card_type: str, trace_type: str) -> bool:
-    try:
-        from src.ingest import TraceDataset
-
-        ds = TraceDataset(input_dir, file_pattern=file_pattern, card_type=card_type, trace_type=trace_type)
-        return bool(getattr(ds, "files", []))
-    except Exception:
-        return False
-
-
 def _pois_ready(opt_dir: str, trace_type: str) -> bool:
     """
     Attack-time guard: if correlation POI search can't run (no secrets),
@@ -96,9 +86,42 @@ def _maybe_migrate_legacy_pois(opt_dir: str, trace_type: str) -> None:
                         pass
 
 
+def _detect_card_family_from_traces(meta_path_3des: str) -> str:
+    """
+    Auto-detect the card family (visa/mastercard) from Track2 column in Y_meta.csv.
+    Returns 'visa' (Track2 starts with 4), 'mastercard' (Track2 starts with 5), 
+    or 'universal' if ambiguous or not found.
+    """
+    import pandas as pd
+    
+    if not os.path.exists(meta_path_3des):
+        return "universal"
+    
+    try:
+        df = pd.read_csv(meta_path_3des)
+        if "Track2" not in df.columns or len(df) == 0:
+            return "universal"
+        
+        t2_values = df["Track2"].astype(str).str.strip().str.upper()
+        first_digits = t2_values.str[0].value_counts()
+        
+        # If 4 (Visa) is present and dominant, return 'visa'
+        if first_digits.get("4", 0) > first_digits.get("5", 0):
+            return "visa"
+        # If 5 (Mastercard) is present and dominant, return 'mastercard'
+        elif first_digits.get("5", 0) > 0:
+            return "mastercard"
+        else:
+            return "universal"
+    except Exception as e:
+        logger.warning(f"Could not auto-detect card family from {meta_path_3des}: {e}")
+        return "universal"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Side-Channel Analysis Pipeline (Legacy Restoration)")
-    parser.add_argument("--mode", choices=["full", "preprocess", "train", "attack"], default="full", help="Execution mode")
+    parser.add_argument("--mode", choices=["full", "preprocess", "train", "attack", "cpa"], default="full",
+                        help="Execution mode. 'cpa' = blind statistical CPA attack: no trained models or ground-truth keys required, only trace_data + ATC columns.")
     # Prefer Input1 if present (repo ships datasets there); user can override.
     default_input = "Input1" if os.path.exists("Input1") else "Input"
     parser.add_argument("--input_dir", default=default_input, help="Directory containing traces")
@@ -125,6 +148,7 @@ def main():
     parser.add_argument("--return_confidence", action="store_true", help="Include Bayesian confidence scores in attack results")
     parser.add_argument("--key_types", default="kenc,kmac,kdek", help="Comma-separated 3DES key types to train (kenc,kmac,kdek)")
     parser.add_argument("--n_attack", type=int, default=0, help="Number of traces for attack (0 = use all available)")
+    parser.add_argument("--label_type", choices=["sbox_output", "sbox_input"], default="sbox_output", help="Label type for POI selection (sbox_input for new training with 6-bit inputs)")
     
     args = parser.parse_args()
     key_types = [k.strip().lower() for k in str(args.key_types).split(",") if k.strip()]
@@ -194,7 +218,9 @@ def main():
                 args.enable_external_labels,
                 args.label_map_xlsx,
                 args.strict_label_mode,
-                force_variance_poi=(args.mode in ["full", "train", "preprocess"]),  # Use deterministic variance-based POI for all preprocessing/training
+                force_variance_poi=(args.mode in ["full", "train", "preprocess"]),  # Use variance-based POI for training/preprocessing (stable across different feature pipelines)
+                label_type=args.label_type,
+                force_regenerate=(args.mode in ["full", "train"]),  # Force fresh features for training
             )
             if not meta_path_3des:
                 meta_path_3des = os.path.join(processed_3des, "Y_meta.csv")
@@ -203,6 +229,7 @@ def main():
 
         if have_rsa:
             logger.info("[STEP 1] Feature Extraction (RSA traces)...")
+            include_secrets_rsa = args.mode in ["full", "train"]
             _, meta_path_rsa = preprocess_rsa(
                 args.input_dir,
                 processed_rsa,
@@ -210,6 +237,13 @@ def main():
                 args.file_pattern,
                 "universal",  # ALWAYS extract all traces; card_type filtering happens at attack time
                 args.use_existing_pois,
+                include_secrets_rsa,
+                args.enable_external_labels,
+                args.label_map_xlsx,
+                args.strict_label_mode,
+                force_variance_poi=(args.mode in ["full", "train", "preprocess"]),
+                label_type=args.label_type,
+                force_regenerate=(args.mode in ["full", "train"]),
             )
             if not meta_path_rsa:
                 meta_path_rsa = os.path.join(processed_rsa, "Y_meta.csv")
@@ -233,6 +267,7 @@ def main():
                 args.early_stop_patience,
                 use_transfer_learning=args.use_transfer_learning,
                 key_types=key_types,
+                label_type=args.label_type,
             )
         elif want_3des and not have_3des:
             logger.warning("Skipping 3DES training: no 3DES traces detected.")
@@ -249,15 +284,63 @@ def main():
     rsa_predictions = None
 
     # [STEP 3] 3DES Attack
-    if (want_3des and (have_3des or has_processed_3des)) and args.mode in ["full", "attack"]:
+    if args.mode == "cpa" and want_3des:
+        # ----------------------------------------------------------------
+        # [STEP 3-CPA] Blind Pearson CPA — no models or ground-truth keys
+        # ----------------------------------------------------------------
+        logger.info("[STEP 3-CPA] Blind CPA key recovery (no ML models required)...")
+        try:
+            from src.cpa_attack import run_cpa_blind_recovery
+
+            cpa_out_dir = os.path.join(args.output_dir, "cpa")
+            
+            # Auto-detect card family if universal
+            detected_card_type = args.card_type
+            if args.card_type == "universal":
+                meta_path_3des = os.path.join(processed_3des, "Y_meta.csv")
+                detected_card_type = _detect_card_family_from_traces(meta_path_3des)
+                if detected_card_type == "universal":
+                    # If still ambiguous, default to visa
+                    detected_card_type = "visa"
+                else:
+                    logger.info(f"[AUTO-DETECT] Card family detected: {detected_card_type}")
+            
+            predicted_3des = run_cpa_blind_recovery(
+                input_dir=args.input_dir,
+                processed_dir=processed_3des,
+                output_dir=cpa_out_dir,
+                card_type=detected_card_type,
+                n_traces_max=args.n_attack,
+            )
+            meta_path_3des   = os.path.join(processed_3des, "Y_meta.csv")
+            has_processed_3des = True
+            if predicted_3des:
+                logger.info(
+                    "[CPA] Session key recovered: K1=%s | K2=%s",
+                    predicted_3des.get("cpa_k1", "?"),
+                    predicted_3des.get("cpa_k2", "?"),
+                )
+        except Exception as e:
+            logger.error("CPA attack failed: %s", e)
+            predicted_3des = None
+
+    elif (want_3des and (have_3des or has_processed_3des)) and args.mode in ["full", "attack"]:
         logger.info("[STEP 3] Running 3DES Attack (Target: %s)...", args.target_key)
         try:
             from src.pipeline_3des import attack_3des
+            
+            # Auto-detect card family if universal
+            detected_card_type = args.card_type
+            if args.card_type == "universal":
+                meta_path_3des = os.path.join(processed_3des, "Y_meta.csv")
+                detected_card_type = _detect_card_family_from_traces(meta_path_3des)
+                if detected_card_type != "universal":
+                    logger.info(f"[AUTO-DETECT] Card family detected: {detected_card_type}")
 
             predicted_3des, final_3des_key = attack_3des(
                 processed_3des,
                 model_root,
-                card_type=args.card_type,
+                card_type=detected_card_type,
                 target_key=args.target_key,
                 return_confidence=args.return_confidence,
                 n_attack=args.n_attack,
@@ -292,7 +375,7 @@ def main():
             logger.warning(f"RSA attack failed: {e}")
 
     # [STEP 5] Final Report Generation (unified single rows with both 3DES and RSA)
-    if args.mode in ["full", "attack"]:
+    if args.mode in ["full", "attack", "cpa"]:
         logger.info("[STEP 5] Generating Reports (CSV/XLSX)...")
         from src.output_gen import OutputGenerator, _normalize_hex
         import pandas as pd
@@ -311,28 +394,58 @@ def main():
             n_rsa_traces = len(df_rsa_meta)
             n_both_traces = min(n_3des_traces, n_rsa_traces)
             
-            logger.info(f"Generating unified report: {n_3des_traces} 3DES traces, {n_rsa_traces} RSA traces, combining {n_both_traces}")
-            
-            # Limit 3DES metadata to rows that have RSA equivalents
-            df_3des_limited = df_3des_meta.iloc[:n_both_traces].reset_index(drop=True)
-            
-            # Generate unified rows with BOTH predictions
-            df_unified = gen.build_rows(
-                meta_path_3des,  # Use path for validation, but we'll pass limited metadata below
-                predicted_3des=predicted_3des,
-                predicted_rsa=rsa_predictions,
-                pin=pin_found_3des if want_3des else pin_found_rsa,
-                final_3des_key=final_3des_key,
-                pure_science=args.pure_science,
-                card_type=args.card_type,
-            )
-            
-            # Keep only rows that have both predictions (first n_both_traces)
-            if len(df_unified) > n_both_traces:
-                df_unified = df_unified.iloc[:n_both_traces].reset_index(drop=True)
-            
-            gen.write_report(df_unified, output_base)
-            logger.info("Pipeline Complete. Generated unified report with %d rows (both 3DES + RSA)", len(df_unified))
+            # If either dataset is empty, fall back to single-attack report
+            if n_both_traces == 0:
+                logger.warning(f"Unified report skipped: 3DES has {n_3des_traces} rows, RSA has {n_rsa_traces} rows. Falling back to single-attack.")
+                if n_3des_traces > 0:
+                    df_3des = gen.build_rows(
+                        meta_path_3des,
+                        predicted_3des=predicted_3des,
+                        predicted_rsa=None,
+                        pin=pin_found_3des,
+                        final_3des_key=final_3des_key,
+                        pure_science=args.pure_science,
+                        card_type=args.card_type,
+                    )
+                    gen.write_report(df_3des, output_base)
+                    logger.info("Pipeline Complete. Generated 3DES-only report with %d rows (RSA data unavailable)", len(df_3des))
+                elif n_rsa_traces > 0:
+                    df_rsa = gen.build_rows(
+                        meta_path_rsa,
+                        predicted_3des=None,
+                        predicted_rsa=rsa_predictions,
+                        pin=pin_found_rsa,
+                        final_3des_key=None,
+                        pure_science=args.pure_science,
+                        card_type=args.card_type,
+                    )
+                    gen.write_report(df_rsa, output_base)
+                    logger.info("Pipeline Complete. Generated RSA-only report with %d rows (3DES data unavailable)", len(df_rsa))
+                else:
+                    logger.error("No data available in either 3DES or RSA metadata files.")
+            else:
+                logger.info(f"Generating unified report: {n_3des_traces} 3DES traces, {n_rsa_traces} RSA traces, combining {n_both_traces}")
+                
+                # Limit 3DES metadata to rows that have RSA equivalents
+                df_3des_limited = df_3des_meta.iloc[:n_both_traces].reset_index(drop=True)
+                
+                # Generate unified rows with BOTH predictions
+                df_unified = gen.build_rows(
+                    meta_path_3des,  # Use path for validation, but we'll pass limited metadata below
+                    predicted_3des=predicted_3des,
+                    predicted_rsa=rsa_predictions,
+                    pin=pin_found_3des if want_3des else pin_found_rsa,
+                    final_3des_key=final_3des_key,
+                    pure_science=args.pure_science,
+                    card_type=args.card_type,
+                )
+                
+                # Keep only rows that have both predictions (first n_both_traces)
+                if len(df_unified) > n_both_traces:
+                    df_unified = df_unified.iloc[:n_both_traces].reset_index(drop=True)
+                
+                gen.write_report(df_unified, output_base)
+                logger.info("Pipeline Complete. Generated unified report with %d rows (both 3DES + RSA)", len(df_unified))
         
         # Fall back to single attack if only 3DES or RSA available
         elif want_3des and (have_3des or has_processed_3des) and meta_path_3des:

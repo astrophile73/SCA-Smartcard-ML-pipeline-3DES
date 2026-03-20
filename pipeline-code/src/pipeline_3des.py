@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple
 import pandas as pd
 
 from src.feature_eng import perform_feature_extraction
-from src.inference_3des import recover_3des_keys
+from src.inference_3des import recover_3des_keys, recover_3des_master_key
 from src.train_ensemble import train_ensemble
 from src.utils import setup_logger
 
@@ -84,7 +84,13 @@ def _auto_align_key_slots(
     if not any(ref_by_slot.values()):
         return predicted
 
-    pred_keys = {k: _normalize_hex_32(predicted.get(k)) for k in key_fields}
+    # Extract a single representative value per slot:
+    # recover_3des_master_key returns list-valued dicts; str(list) produces
+    # a garbage string that accidentally scores non-zero on a wrong permutation.
+    def _first_val(v: object) -> object:
+        return v[0] if isinstance(v, (list, tuple)) and v else v
+
+    pred_keys = {k: _normalize_hex_32(_first_val(predicted.get(k))) for k in key_fields}
     if not any(pred_keys.values()):
         return predicted
 
@@ -147,52 +153,9 @@ def _auto_align_key_slots(
     return out
 
 
-def _apply_reference_fallback(
-    predicted: Optional[Dict[str, object]],
-    processed_dir: str,
-    card_type: str = "universal",
-    pure_science: bool = False,
-) -> Optional[Dict[str, object]]:
-    """
-    Reference-assisted fallback (non-pure-science mode only):
-    If metadata contains T_DES_* columns, use their dominant values for the corresponding
-    key slots. This guarantees stable key output on labeled datasets while remaining
-    blind-trace compatible (no effect when columns are absent).
-    """
-    if pure_science or not predicted:
-        return predicted
-
-    meta_path = os.path.join(processed_dir, "Y_meta.csv")
-    if not os.path.exists(meta_path):
-        return predicted
-
-    try:
-        meta_df = pd.read_csv(meta_path)
-    except Exception:
-        return predicted
-
-    if card_type and card_type.lower() != "universal" and "Track2" in meta_df.columns:
-        t2 = meta_df["Track2"].astype(str).str.upper().str.strip()
-        if card_type.lower() == "visa":
-            meta_df = meta_df[t2.str.startswith("4")]
-        elif card_type.lower() == "mastercard":
-            meta_df = meta_df[t2.str.startswith("5")]
-
-    ref_map = {
-        "3DES_KENC": _dominant_key_from_meta(meta_df, "T_DES_KENC"),
-        "3DES_KMAC": _dominant_key_from_meta(meta_df, "T_DES_KMAC"),
-        "3DES_KDEK": _dominant_key_from_meta(meta_df, "T_DES_KDEK"),
-    }
-    if not any(ref_map.values()):
-        return predicted
-
-    out = dict(predicted)
-    for k, v in ref_map.items():
-        if v:
-            out[k] = v
-    out["_reference_fallback"] = True
-    logger.info("Applied reference-key fallback from metadata (pure_science=False).")
-    return out
+# DEPRECATED: Reference fallback removed from inference to ensure blind predictions.
+# Training strategy (supervised vs unsupervised) is separate from inference (always blind).
+# def _apply_reference_fallback(...) - REMOVED
 
 
 def preprocess_3des(
@@ -207,6 +170,9 @@ def preprocess_3des(
     label_map_xlsx: Optional[str] = None,
     strict_label_mode: bool = False,
     force_variance_poi: bool = False,
+    label_type: str = "sbox_output",
+    force_regenerate: bool = False,
+    cpa_label_map: Optional[dict] = None,    # CPA pseudo-labels for unsupervised Visa training
 ) -> Tuple[Optional[str], Optional[str]]:
     return perform_feature_extraction(
         input_dir,
@@ -222,6 +188,9 @@ def preprocess_3des(
         label_map_xlsx=label_map_xlsx,
         strict_label_mode=strict_label_mode,
         force_variance_poi=force_variance_poi,
+        label_type=label_type,
+        force_regenerate=force_regenerate,
+        cpa_label_map=cpa_label_map,
     )
 
 
@@ -233,6 +202,7 @@ def train_3des(
     early_stop_patience: int,
     use_transfer_learning: bool = False,
     key_types: Optional[list[str]] = None,
+    label_type: str = "sbox_output",
 ) -> None:
     os.makedirs(model_root, exist_ok=True)
     logger.info("Training 3DES ensemble into %s", model_root)
@@ -245,6 +215,7 @@ def train_3des(
         early_stop_patience=early_stop_patience,
         use_transfer_learning=use_transfer_learning,
         key_types=key_types,
+        label_type=label_type,
     )
 
 
@@ -281,7 +252,8 @@ def attack_3des(
     target_key: str = "session",
     return_confidence: bool = False,
     n_attack: int = 0,
-    pure_science: bool = True,
+    pure_science: bool = False,
+    cpa_keys_path: Optional[str] = None,   # Path to cpa_keys.json for 8-bit PC2 ambiguity resolution
 ) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
     if target_key == "master":
         from src.inference_masterkey import run_master_key_attack
@@ -328,18 +300,16 @@ def attack_3des(
         return None, final_3des_key
 
     model_dir = _resolve_3des_model_root(model_root)
+    
+    # PRODUCTION MODE: Use master key recovery (static key via voting across all traces)
+    # This is the correct attack for blind key recovery with only trace_data/ATC/Track2
+    logger.info("[ATTACK MODE] Using MASTER KEY RECOVERY (voting across all traces for static key)...")
+    predicted = recover_3des_master_key(processed_dir, model_dir, card_type=card_type, n_attack=n_attack)
+    
     if return_confidence:
-        from src.inference_3des import run_blind_attack
-        logger.info("Running 3DES attack with Bayesian confidence scoring...")
-        predicted = run_blind_attack(
-            processed_dir,
-            model_dir,
-            card_type=card_type,
-            n_attack=n_attack,
-            return_confidence=True,
-        )
-    else:
-        predicted = recover_3des_keys(processed_dir, model_dir, card_type=card_type, n_attack=n_attack)
+        logger.info("[ATTACK MODE] Confidence scoring requested but not available for master key recovery mode.")
+    
     predicted = _auto_align_key_slots(predicted, processed_dir, card_type)
-    predicted = _apply_reference_fallback(predicted, processed_dir, card_type, pure_science=pure_science)
+    # Always output pure ML predictions during inference (no reference fallback)
+    # pure_science only affects preprocessing strategy, not inference blind-ness
     return predicted, None

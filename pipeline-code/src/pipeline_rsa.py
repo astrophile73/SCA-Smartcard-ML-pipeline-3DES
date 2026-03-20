@@ -21,6 +21,13 @@ def preprocess_rsa(
     file_pattern: str,
     card_type: str,
     use_existing_pois: bool,
+    include_secrets: bool = False,
+    enable_external_labels: bool = False,
+    label_map_xlsx: Optional[str] = None,
+    strict_label_mode: bool = False,
+    force_variance_poi: bool = False,
+    label_type: str = "sbox_output",
+    force_regenerate: bool = False,
 ) -> Tuple[Optional[str], Optional[str]]:
     return perform_feature_extraction(
         input_dir,
@@ -29,9 +36,15 @@ def preprocess_rsa(
         file_pattern=file_pattern,
         use_existing_pois=use_existing_pois,
         card_type=card_type,
-        include_secrets=False,
+        include_secrets=include_secrets,
         trace_type="rsa",
         opt_dir=os.path.join(opt_dir, "pois_rsa"),
+        enable_external_labels=enable_external_labels,
+        label_map_xlsx=label_map_xlsx,
+        strict_label_mode=strict_label_mode,
+        force_variance_poi=force_variance_poi,
+        label_type=label_type,
+        force_regenerate=force_regenerate,
     )
 
 

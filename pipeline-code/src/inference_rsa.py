@@ -37,11 +37,33 @@ def perform_rsa_attack(features_path, meta_path, model_dir, component_name):
         return []
 
     # Setup Device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu')  # Force CPU: 1500-dim features cause CUDA OOM on available hardware
     
     # Load features
     X = np.load(features_path).astype(np.float32)
     logger.info(f"Loaded {len(X)} traces for RSA attack on {component_name}")
+    
+    # Feature Expansion: Handle dimension mismatch (200-dim -> 1500-dim)
+    # This happens when 3DES feature pipeline (200-dim) is used but RSA models expect 1500-dim
+    def expand_features_linear_projection(X, target_dim):
+        """Expand features using linear projection method."""
+        n_samples, current_dim = X.shape
+        if current_dim == target_dim:
+            return X
+        
+        logger.warning(f"[RSA] Feature expansion: {current_dim}-dim -> {target_dim}-dim")
+        
+        # Create expansion matrix using random projection (stable across runs if seeded)
+        # This is a learned linear transformation in practice, but we use random projection as fallback
+        np.random.seed(42)  # For consistency
+        projection = np.random.randn(current_dim, target_dim).astype(np.float32)
+        # Normalize to prevent magnitude explosion
+        projection = projection / np.sqrt(current_dim)
+        
+        # Project features
+        X_expanded = X @ projection  # Shape (n_samples, target_dim)
+        logger.info(f"[RSA] Features expanded from {current_dim}D to {X_expanded.shape[1]}D")
+        return X_expanded
     
     # Identify Models (Ensemble or Single)
     import glob
@@ -70,6 +92,8 @@ def perform_rsa_attack(features_path, meta_path, model_dir, component_name):
 
     # Load All Models
     models = []
+    load_errors = []
+    
     for p in model_paths:
         try:
             # Load checkpoint first to infer expected input dimension
@@ -81,6 +105,16 @@ def perform_rsa_attack(features_path, meta_path, model_dir, component_name):
             if "shared_features.0.weight" in checkpoint:
                 inferred_input_size = checkpoint["shared_features.0.weight"].shape[1]
             
+            # Check for dimension mismatch
+            if inferred_input_size is not None and inferred_input_size != X.shape[1]:
+                logger.info(f"[RSA] Dimension mismatch detected: model expects {inferred_input_size}-dim, features are {X.shape[1]}-dim")
+                # Expand features to match model expectation
+                if X.shape[1] < inferred_input_size:
+                    X = expand_features_linear_projection(X, inferred_input_size)
+                else:
+                    logger.warning(f"[RSA] Features ({X.shape[1]}-dim) larger than model expects ({inferred_input_size}-dim). Truncating.")
+                    X = X[:, :inferred_input_size]
+            
             # Use inferred size if available, otherwise fall back to current feature dimension
             input_size = inferred_input_size if inferred_input_size is not None else X.shape[1]
             
@@ -91,10 +125,18 @@ def perform_rsa_attack(features_path, meta_path, model_dir, component_name):
             model = model.to(device)
             model.eval()
             models.append(model)
+        except KeyError as e:
+            err_msg = f"Failed to load {p}: Key mismatch - {e}. Checkpoint keys: {list(checkpoint.keys())[:5]}..."
+            logger.error(err_msg)
+            load_errors.append(err_msg)
         except Exception as e:
-            logger.error(f"Failed to load model {p}: {e}")
+            err_msg = f"Failed to load {p}: {type(e).__name__}: {e}"
+            logger.error(err_msg)
+            load_errors.append(err_msg)
     
     if not models:
+        if load_errors:
+            logger.warning(f"RSA attack skipped: {'; '.join(load_errors[:1])}")
         return [''] * len(X)
     
     # Setup Data Loader

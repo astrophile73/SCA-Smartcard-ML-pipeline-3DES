@@ -28,6 +28,7 @@ def train_single_model(
     shared_backbone=None,
     freeze_backbone=False,
     transfer_lr=0.0001,
+    label_type="sbox_output",
 ):
     """
     Train a single S-box model
@@ -37,8 +38,21 @@ def train_single_model(
         shared_backbone: Pre-trained shared backbone (optional, for transfer learning)
         freeze_backbone: If True, don't update backbone weights (fine-tuning mode)
         transfer_lr: Learning rate for transfer learning (lower than initial training)
+    
+    Args added for Feature-Label Alignment:
+        label_type: Labels to use - "sbox_input" (6-bit, 0-63) or "sbox_output" (4-bit, 0-15)
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # Convert labels based on label_type for proper feature-label alignment
+    if label_type == "sbox_input":
+        # Extract lower 6 bits (sbox input values: 0-63)
+        Y = Y & 0x3F
+        num_classes = 64
+    else:
+        # Labels are already 4-bit sbox output values [0, 15]; just mask to be safe
+        Y = Y & 0x0F
+        num_classes = 16
     
     # 80/20 Split (prefer grouping by capture/file to reduce "mugging up")
     if groups is not None and len(set(groups.tolist())) > 1:
@@ -70,8 +84,8 @@ def train_single_model(
             model.unfreeze_backbone()
             lr = 0.001  # Normal LR for full training
     else:
-        # Regular training mode: Standard ZaidNet
-        model = get_model(input_dim=X.shape[1], num_classes=16).to(device)
+        # Regular training mode: Standard ZaidNet with dynamic num_classes
+        model = get_model(input_dim=X.shape[1], num_classes=num_classes).to(device)
         lr = 0.001
     
     criterion = nn.CrossEntropyLoss()
@@ -146,6 +160,7 @@ def train_ensemble(
     early_stop_patience=8,
     use_transfer_learning=False,
     key_types=None,
+    label_type="sbox_output",
 ):
     """
     Gap #2: Transfer Learning Support
@@ -203,6 +218,10 @@ def train_ensemble(
         logger.warning("No valid key types requested; skipping 3DES training.")
         return
 
+    # Log label type configuration for debugging
+    num_classes_info = 64 if label_type == "sbox_input" else 16
+    logger.info(f"[TRAINING] Using label_type: {label_type} (num_classes={num_classes_info})")
+
     # Loop over key types and stages, loading per-key-type features for each
     for phase_idx, (key_type, phase_name) in enumerate(key_type_phases):
         logger.info("")
@@ -254,14 +273,17 @@ def train_ensemble(
             logger.warning(f"Stage 2 features missing for {key_type.upper()}; stage-2 training will be skipped.")
 
         # Gap #2: Create or initialize shared backbone for transfer learning
+        # Determine num_classes based on label_type
+        num_classes = 64 if label_type == "sbox_input" else 16
+        
         if use_transfer_learning:
             # Phase 1 (KENC): Create new shared backbone with full training
             if phase_idx == 0:  # KENC phase
                 shared_input_dim = int(X_s1.shape[1])
-                shared_backbone = ZaidNetSharedBackbone(input_dim=shared_input_dim, num_classes=16)
+                shared_backbone = ZaidNetSharedBackbone(input_dim=shared_input_dim, num_classes=num_classes)
                 # Ensure not frozen for Phase 1
                 shared_backbone.unfreeze_backbone()
-                logger.info(f"Created shared backbone (Phase 1: KENC full training, LR=0.001)")
+                logger.info(f"Created shared backbone (Phase 1: KENC full training, LR=0.001, num_classes={num_classes})")
                 freeze_flag = False
             else:  # KMAC and KDEK phases
                 # Reuse backbone from Phase 1, freeze it
@@ -290,6 +312,7 @@ def train_ensemble(
                 Y = np.load(y_path).astype(np.longlong)
 
                 valid_idx = Y != -1
+                
                 # Prefer per-sbox features when available (especially useful for stage 2).
                 if stage == 1:
                     x_sbox_path = os.path.join(input_dir, f"X_sbox{sbox_num}.npy")
@@ -305,6 +328,9 @@ def train_ensemble(
                     std_local = np.std(X_curr, axis=0)
                     std_local[std_local == 0] = 1
                     X_curr = (X_curr - mean_local) / std_local
+                    # Save per-sbox normalization stats so inference can match training distribution
+                    np.save(os.path.join(kt_norm_dir, f"mean_s{stage}_sbox{sbox_num}.npy"), mean_local)
+                    np.save(os.path.join(kt_norm_dir, f"std_s{stage}_sbox{sbox_num}.npy"), std_local)
                     logger.info(
                         "Using per-sbox features for %s Stage %d S-Box %d (%d dimensions)",
                         key_type.upper(),
@@ -357,6 +383,7 @@ def train_ensemble(
                         shared_backbone=shared_backbone if use_shared_for_this_run else None,
                         freeze_backbone=freeze_flag if use_shared_for_this_run else False,
                         transfer_lr=0.0001 if (use_transfer_learning and phase_idx > 0) else 0.001,
+                        label_type=label_type,
                     )
         
         logger.info(f"{phase_name} Complete")

@@ -1,6 +1,9 @@
 
 import logging
-from src.pyDes import des, triple_des
+try:
+    from src.pyDes import des, triple_des
+except ImportError:
+    from pyDes import des, triple_des
 
 # LOGGING
 logger = logging.getLogger("crypto")
@@ -410,6 +413,54 @@ def generate_key_candidates_from_rk1(sbox_inputs):
             
         candidates.append(final_key)
         
+    return candidates
+
+def generate_key_candidates_from_rk16(sbox_inputs):
+    """
+    Generates all 256 possible 64-bit DES keys from the given RK16 (Round Key 16).
+    RK16 = PC2(C0||D0) because C16==C0 and D16==D0 (total left-rotations = 28 mod 28 = 0).
+    Therefore NO inverse shift is needed — PC2 is inverted directly onto C0D0.
+    """
+    rk16_bits = []
+    for val in sbox_inputs:
+        bits = [(val >> i) & 1 for i in range(5, -1, -1)]
+        rk16_bits.extend(bits)
+
+    c0d0_template = [None] * 56
+    for i in range(48):
+        original_idx = _PC2[i]
+        c0d0_template[original_idx] = rk16_bits[i]
+
+    missing_indices = [i for i, x in enumerate(c0d0_template) if x is None]
+
+    candidates = []
+    import itertools
+    for guess in itertools.product([0, 1], repeat=len(missing_indices)):
+        current_c0d0 = list(c0d0_template)
+        for i, bit in enumerate(guess):
+            current_c0d0[missing_indices[i]] = bit
+
+        key_bits = [0] * 64
+        for i in range(56):
+            original_key_idx = _PC1[i]
+            key_bits[original_key_idx] = current_c0d0[i]
+
+        key_int = 0
+        for b in key_bits:
+            key_int = (key_int << 1) | b
+
+        final_key = 0
+        for i in range(8):
+            shift_val = (7 - i) * 8
+            byte_val = (key_int >> shift_val) & 0xFF
+            top_7 = byte_val & 0xFE
+            w = bin(top_7).count('1')
+            if w % 2 == 0: byte_val |= 1
+            else: byte_val &= 0xFE
+            final_key = (final_key << 8) | byte_val
+
+        candidates.append(final_key)
+
     return candidates
 
 def reconstruct_key_from_rk16(sbox_inputs):

@@ -144,43 +144,14 @@ class OutputGenerator:
             out["AIP"] = _normalize_hex(row.get("AIP", ""))
             out["IAD"] = _normalize_hex(row.get("IAD", ""))
 
-            # 3DES predictions: If single master key recovered, derive session keys per-transaction using ATC.
+            # 3DES predictions: Return master key directly (no session key derivation)
             if predicted_3des:
-                # Check if this is a single master key (all 3 key types have same value + reference_fallback indicator)
-                kenc = _normalize_hex(predicted_3des.get("3DES_KENC", ""))
-                kmac = _normalize_hex(predicted_3des.get("3DES_KMAC", ""))
-                kdek = _normalize_hex(predicted_3des.get("3DES_KDEK", ""))
-                is_reference_fallback = predicted_3des.get("_reference_fallback", False) or predicted_3des.get("_slot_alignment", {}).get("applied", False)
-                
-                # If all three keys are identical, treat as single master key to be derived per-ATC
-                if kenc == kmac == kdek and kenc and ("T_DES_KENC" in meta_df.columns or "ATC" in meta_df.columns):
-                    try:
-                        from src.crypto import derive_emv_session_keys
-                        atc_val = str(meta_df.iloc[idx].get("ATC", "0000")).strip()
-                        if atc_val and atc_val.lower() != "nan":
-                            derived = derive_emv_session_keys(kenc, atc_val)
-                            if derived:
-                                out["3DES_KENC"] = _format_3des_32_hex(derived.get("KENC", ""))
-                                out["3DES_KMAC"] = _format_3des_32_hex(derived.get("KMAC", ""))
-                                out["3DES_KDEK"] = _format_3des_32_hex(derived.get("KDEK", ""))
-                            else:
-                                out["3DES_KENC"] = _format_3des_32_hex(kenc)
-                                out["3DES_KMAC"] = _format_3des_32_hex(kmac)
-                                out["3DES_KDEK"] = _format_3des_32_hex(kdek)
-                        else:
-                            out["3DES_KENC"] = _format_3des_32_hex(kenc)
-                            out["3DES_KMAC"] = _format_3des_32_hex(kmac)
-                            out["3DES_KDEK"] = _format_3des_32_hex(kdek)
-                    except Exception as e:
-                        logger.warning(f"Session key derivation failed for row {idx}: {e}")
-                        out["3DES_KENC"] = _format_3des_32_hex(kenc)
-                        out["3DES_KMAC"] = _format_3des_32_hex(kmac)
-                        out["3DES_KDEK"] = _format_3des_32_hex(kdek)
-                else:
-                    # Per-row predictions or already-differentiated keys
-                    for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
-                        v = _value_for_row(predicted_3des.get(col), idx)
-                        out[col] = _format_3des_32_hex(v) if v else ""
+                # Simply output the recovered master keys as-is
+                # recover_3des_master_key returns [same_key] * N_traces
+                # decode_output_key returns {3DES_KENC, 3DES_KMAC, 3DES_KDEK} with repeated master key
+                for col in ("3DES_KENC", "3DES_KMAC", "3DES_KDEK"):
+                    v = _value_for_row(predicted_3des.get(col), idx)
+                    out[col] = _format_3des_32_hex(v) if v else ""
             elif final_3des_key:
                 # Legacy compatibility: emit the first 16-byte key material (32 hex chars).
                 v = _normalize_hex(final_3des_key)
